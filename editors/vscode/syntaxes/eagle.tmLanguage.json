@@ -1,0 +1,143 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Eagle",
+  "scopeName": "source.eagle",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#line-continuation" },
+    { "include": "#string-quoted" },
+    { "include": "#variable" },
+    { "include": "#command-substitution" },
+    { "include": "#proc-definition" },
+    { "include": "#control-keyword" },
+    { "include": "#builtin-command" },
+    { "include": "#option-flag" },
+    { "include": "#number" },
+    { "include": "#operator" },
+    { "include": "#expr-operator" },
+    { "include": "#math-function" },
+    { "include": "#block-braced" }
+  ],
+  "repository": {
+    "comment": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.eagle",
+          "match": "(?:^|(?<=;|\\{))\\s*#.*$"
+        },
+        {
+          "name": "comment.block.eagle",
+          "begin": "(?:^|(?<=;|\\{))\\s*if\\s+0\\s*\\{",
+          "end": "\\}",
+          "patterns": [
+            { "include": "#comment" }
+          ]
+        }
+      ]
+    },
+    "line-continuation": {
+      "match": "\\\\$",
+      "name": "constant.character.escape.line-continuation.eagle"
+    },
+    "string-quoted": {
+      "name": "string.quoted.double.eagle",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.eagle", "match": "\\\\[\\\\\"abfnrtv0-7xu]" },
+        { "include": "#variable" },
+        { "include": "#command-substitution" }
+      ]
+    },
+    "variable": {
+      "patterns": [
+        {
+          "name": "variable.other.eagle",
+          "match": "\\$\\{[^}]+\\}"
+        },
+        {
+          "name": "variable.other.eagle",
+          "match": "\\$[a-zA-Z_][a-zA-Z0-9_:]*(?:\\([^)]*\\))?"
+        },
+        {
+          "name": "variable.other.eagle",
+          "match": "\\$::[a-zA-Z_][a-zA-Z0-9_:]*"
+        }
+      ]
+    },
+    "command-substitution": {
+      "name": "meta.command-substitution.eagle",
+      "begin": "\\[",
+      "end": "\\]",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.brackets.begin.eagle" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.brackets.end.eagle" }
+      },
+      "patterns": [
+        { "include": "$self" }
+      ]
+    },
+    "proc-definition": {
+      "patterns": [
+        {
+          "match": "(?:^|(?<=\\s|;|\\[))(?:proc|nproc)\\s+([a-zA-Z_][a-zA-Z0-9_:]*)",
+          "captures": {
+            "0": { "name": "meta.function.eagle" },
+            "1": { "name": "entity.name.function.eagle" }
+          }
+        }
+      ]
+    },
+    "control-keyword": {
+      "name": "keyword.control.eagle",
+      "match": "(?:^|(?<=\\s|;|\\[))(?:if|else|elseif|then|for|foreach|while|do|switch|break|continue|return|catch|try|throw|finally|error|uplevel|downlevel)(?=\\s|$|;)"
+    },
+    "builtin-command": {
+      "name": "support.function.eagle",
+      "match": "(?:^|(?<=\\s|;|\\[))(?:after|append|apply|array|base64|bgerror|callback|cd|clock|close|concat|debug|encoding|eof|eval|exec|exit|expr|fblocked|fconfigure|fcopy|file|flush|format|fpclassify|getf|gets|glob|global|guid|hash|host|incr|info|interp|invoke|join|kill|lappend|lassign|lget|library|lindex|linsert|list|llength|lmap|load|lrange|lremove|lrepeat|lreplace|lreverse|lsearch|lset|lsort|napply|namespace|nop|nproc|object|open|package|parse|pid|proc|puts|pwd|read|regexp|regsub|rename|scope|seek|set|setf|socket|source|split|sql|string|subst|tcl|tell|test1|test2|time|truncate|unload|unset|unsetf|update|upvar|uri|variable|version|vwait|xml)(?=\\s|$|;)"
+    },
+    "option-flag": {
+      "name": "entity.other.attribute-name.eagle",
+      "match": "(?<=\\s)-[a-zA-Z][a-zA-Z0-9_]*"
+    },
+    "number": {
+      "patterns": [
+        {
+          "name": "constant.numeric.eagle",
+          "match": "(?:^|(?<=\\s))(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|[0-9]+\\.?[0-9]*(?:[eE][+-]?[0-9]+)?)(?=\\s|$|;|\\]|\\)|\\})"
+        },
+        {
+          "name": "constant.language.boolean.eagle",
+          "match": "(?:^|(?<=\\s))(?:true|false)(?=\\s|$|;|\\]|\\)|\\})"
+        }
+      ]
+    },
+    "operator": {
+      "name": "keyword.operator.eagle",
+      "match": "(?:<->|->|\\*\\*|\\^\\^|<<<|>>>|~&|~\\||:=|==|!=|<=|>=|&&|\\|\\||<<|>>|[+\\-*/%<>!&|^~])"
+    },
+    "expr-operator": {
+      "name": "keyword.operator.word.eagle",
+      "match": "(?<=\\s|\\()(?:eq|ne|lt|gt|le|ge|in|ni)(?=\\s|\\)|$)"
+    },
+    "math-function": {
+      "name": "support.function.math.eagle",
+      "match": "(?:acos|asin|atan2?|cosh?|sinh?|tanh?|exp|log(?:10|2|x)?|pow|sqrt|ceil|floor|round[23]?|truncate|abs|fmod|hypot|sign|max|min|isfinite|isinf|isnan|isnormal|issubnormal|isunordered|rand(?:om|str)?|srand|bool|double|int|entier|wide|decimal|e|pi|epsilon|typeof|datetime|timespan|flags|list)(?=\\()"
+    },
+    "block-braced": {
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.braces.begin.eagle" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.braces.end.eagle" }
+      },
+      "patterns": [
+        { "include": "$self" }
+      ]
+    }
+  }
+}

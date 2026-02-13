@@ -1,0 +1,80 @@
+{
+  "name": "eagle-scripting-language",
+  "displayName": "Eagle Scripting Language",
+  "description": "Syntax highlighting for the Eagle scripting language (Tcl for the CLR)",
+  "version": "1.0.0",
+  "publisher": "MistachkinSystems",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mistachkin/eagle-lsp"
+  },
+  "license": "MIT",
+  "icon": "./eagle-256.png",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "activationEvents": [
+    "onLanguage:eagle",
+    "onLanguage:tcl"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "eagle",
+        "aliases": ["Eagle"],
+        "extensions": [".eagle", ".eeagle", ".ruleSet"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./eagle-32.png",
+          "dark": "./eagle-32.png"
+        }
+      },
+      {
+        "id": "tcl",
+        "aliases": ["Tcl"],
+        "extensions": [".tcl", ".tk", ".itcl", ".itk"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./eagle-32.png",
+          "dark": "./eagle-32.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "eagle",
+        "scopeName": "source.eagle",
+        "path": "./syntaxes/eagle.tmLanguage.json"
+      },
+      {
+        "language": "tcl",
+        "scopeName": "source.eagle",
+        "path": "./syntaxes/eagle.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Eagle Language Server",
+      "properties": {
+        "eagle.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the eagle-language-server executable. If empty, uses bundled server."
+        },
+        "eagle.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Trace communication with the Eagle Language Server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "bash ../../scripts/package-vsix.sh"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

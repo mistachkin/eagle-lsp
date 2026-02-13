@@ -1,0 +1,24 @@
+# Changelog
+
+All notable changes to the Eagle Scripting Language extension will be documented
+in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2026-02-12
+
+### Added
+
+- Initial release of Eagle Scripting Language for VS Code.
+- Syntax highlighting for `.eagle`, `.eeagle`, `.ruleSet`, `.tcl`, `.tk`,
+  `.itcl`, and `.itk` files.
+- Autocompletion for 120+ built-in commands, subcommands, options, and 135+
+  library procedures.
+- Hover documentation with synopsis, description, options, and examples.
+- Signature help showing usage patterns as you type command arguments.
+- Diagnostics for unmatched braces/brackets and unknown command hints.
+- Document symbols for procedures, namespaces, packages, and variables.
+- Go-to-definition for user-defined procedures and variables.
+- Find-all-references for symbols within a file.
+- Folding ranges for brace blocks and comment blocks.

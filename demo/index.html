@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Eagle Language Server - Demo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; }
+.header { background: linear-gradient(135deg, #1a1b26 0%, #24283b 100%); padding: 2rem; border-bottom: 1px solid #30363d; }
+.header h1 { font-size: 2rem; color: #58a6ff; margin-bottom: 0.5rem; }
+.header h1 span { color: #7ee787; }
+.header p { color: #8b949e; font-size: 1.1rem; }
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; }
+.card h3 { color: #58a6ff; margin-bottom: 0.75rem; font-size: 1.1rem; }
+.card h3 .icon { margin-right: 0.5rem; }
+.card p { color: #8b949e; font-size: 0.9rem; line-height: 1.6; }
+.card .badge { display: inline-block; background: #1f6feb22; color: #58a6ff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-top: 0.5rem; }
+.section { margin: 3rem 0; }
+.section h2 { color: #e6edf3; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid #21262d; padding-bottom: 0.5rem; }
+.code-block { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; overflow-x: auto; line-height: 1.6; }
+.code-block .kw { color: #ff7b72; }
+.code-block .cmd { color: #d2a8ff; }
+.code-block .str { color: #a5d6ff; }
+.code-block .var { color: #7ee787; }
+.code-block .comment { color: #484f58; font-style: italic; }
+.code-block .opt { color: #ffa657; }
+.stats { display: flex; gap: 2rem; flex-wrap: wrap; margin: 1.5rem 0; }
+.stat { text-align: center; }
+.stat .num { font-size: 2rem; font-weight: bold; color: #58a6ff; }
+.stat .label { font-size: 0.8rem; color: #8b949e; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+table th { text-align: left; color: #e6edf3; padding: 0.75rem; border-bottom: 2px solid #30363d; font-size: 0.85rem; }
+table td { padding: 0.75rem; border-bottom: 1px solid #21262d; font-size: 0.85rem; }
+table td code { background: #1f6feb22; color: #79c0ff; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+.install-tabs { display: flex; gap: 0; margin-bottom: 0; }
+.install-tab { background: #161b22; border: 1px solid #30363d; padding: 0.5rem 1rem; cursor: pointer; font-size: 0.85rem; color: #8b949e; border-bottom: none; }
+.install-tab.active { color: #e6edf3; border-bottom: 2px solid #58a6ff; background: #0d1117; }
+.install-content { display: none; }
+.install-content.active { display: block; }
+a { color: #58a6ff; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.cmd-list { columns: 4; column-gap: 1rem; }
+.cmd-list span { display: inline-block; font-family: monospace; font-size: 0.8rem; color: #79c0ff; padding: 2px 0; }
+@media (max-width: 768px) { .cmd-list { columns: 2; } .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <h1>🦅 Eagle <span>Language Server</span></h1>
+    <p>Full LSP implementation for the Eagle scripting language (Tcl for the CLR)</p>
+  </div>
+</div>
+
+<div class="container">
+
+<div class="stats" id="stats"></div>
+
+<div class="grid">
+  <div class="card">
+    <h3><span class="icon">💡</span>Intelligent Completion</h3>
+    <p>Context-aware completions for 120 built-in commands, subcommands, options, 135+ library procedures, variables, and user-defined procs.</p>
+    <span class="badge">Commands</span> <span class="badge">Subcommands</span> <span class="badge">Options</span> <span class="badge">Variables</span>
+  </div>
+  <div class="card">
+    <h3><span class="icon">📖</span>Rich Hover Documentation</h3>
+    <p>Hover over any command to see its full documentation: synopsis, description, available subcommands, options, and code examples.</p>
+    <span class="badge">Markdown</span> <span class="badge">Examples</span>
+  </div>
+  <div class="card">
+    <h3><span class="icon">✍️</span>Signature Help</h3>
+    <p>See usage patterns as you type. Multiple overloads displayed with active parameter tracking.</p>
+    <span class="badge">Overloads</span>
+  </div>
+  <div class="card">
+    <h3><span class="icon">⚠️</span>Diagnostics</h3>
+    <p>Real-time error detection: unmatched braces/brackets, unknown command warnings. Catches common mistakes instantly.</p>
+    <span class="badge">Errors</span> <span class="badge">Hints</span>
+  </div>
+  <div class="card">
+    <h3><span class="icon">🗂️</span>Document Symbols</h3>
+    <p>Navigate your code structure: procedures, namespaces, packages, and variable definitions appear in the outline.</p>
+    <span class="badge">Outline</span>
+  </div>
+  <div class="card">
+    <h3><span class="icon">🔍</span>Go to Definition & References</h3>
+    <p>Jump to where procs and variables are defined. Find all references across the file.</p>
+    <span class="badge">Navigation</span>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Example: Syntax Highlighting + Hover</h2>
+  <div class="code-block">
+    <span class="comment"># Eagle script with CLR object interop</span><br>
+    <span class="kw">proc</span> <span class="cmd">greet</span> {name {greeting "Hello"}} {<br>
+    &nbsp;&nbsp;<span class="cmd">puts</span> <span class="str">"<span class="var">$greeting</span>, <span class="var">$name</span>!"</span><br>
+    }<br><br>
+    <span class="comment"># Use CLR objects directly</span><br>
+    <span class="cmd">set</span> <span class="var">sb</span> [<span class="cmd">object</span> create <span class="opt">-alias</span> System.Text.StringBuilder]<br>
+    <span class="var">$sb</span> Append <span class="str">"Eagle "</span><br>
+    <span class="var">$sb</span> Append <span class="str">"on the CLR"</span><br>
+    <span class="cmd">puts</span> [<span class="var">$sb</span> ToString]<br>
+    <span class="cmd">object</span> dispose <span class="var">$sb</span><br><br>
+    <span class="comment"># List operations</span><br>
+    <span class="cmd">set</span> <span class="var">items</span> [<span class="cmd">list</span> alpha bravo charlie delta]<br>
+    <span class="kw">foreach</span> <span class="var">item</span> [<span class="cmd">lsort</span> <span class="opt">-decreasing</span> <span class="var">$items</span>] {<br>
+    &nbsp;&nbsp;<span class="cmd">puts</span> <span class="str">"  <span class="var">$item</span>"</span><br>
+    }<br><br>
+    <span class="comment"># SQL database access</span><br>
+    <span class="cmd">sql</span> open <span class="opt">-type</span> SQLite <span class="str">"Data Source=:memory:"</span><br>
+    <span class="cmd">sql</span> execute <span class="str">"CREATE TABLE t1 (id INTEGER, name TEXT)"</span>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Editor Setup</h2>
+  <div class="install-tabs">
+    <div class="install-tab active" onclick="showTab('vscode')">VS Code</div>
+    <div class="install-tab" onclick="showTab('neovim')">Neovim</div>
+    <div class="install-tab" onclick="showTab('emacs')">Emacs</div>
+    <div class="install-tab" onclick="showTab('sublime')">Sublime</div>
+    <div class="install-tab" onclick="showTab('helix')">Helix</div>
+  </div>
+  <div class="install-content active" id="tab-vscode">
+    <div class="code-block"><span class="comment"># Install from extension directory</span><br>cd editors/vscode && npm install<br><span class="comment"># Symlink into VS Code extensions</span><br>ln -s $(pwd) ~/.vscode/extensions/eagle-scripting-language</div>
+  </div>
+  <div class="install-content" id="tab-neovim">
+    <div class="code-block"><span class="comment">-- In your Neovim config (lua)</span><br>local configs = require('lspconfig.configs')<br>configs.eagle = {<br>&nbsp;&nbsp;default_config = {<br>&nbsp;&nbsp;&nbsp;&nbsp;cmd = { 'node', '/path/to/eagle-lsp/server.js', '--stdio' },<br>&nbsp;&nbsp;&nbsp;&nbsp;filetypes = { 'eagle', 'tcl' },<br>&nbsp;&nbsp;}<br>}<br>require('lspconfig').eagle.setup({})</div>
+  </div>
+  <div class="install-content" id="tab-emacs">
+    <div class="code-block">(lsp-register-client<br>&nbsp;(make-lsp-client<br>&nbsp;&nbsp;:new-connection (lsp-stdio-connection<br>&nbsp;&nbsp;&nbsp;'("node" "/path/to/eagle-lsp/server.js" "--stdio"))<br>&nbsp;&nbsp;:major-modes '(tcl-mode)<br>&nbsp;&nbsp;:server-id 'eagle-ls))</div>
+  </div>
+  <div class="install-content" id="tab-sublime">
+    <div class="code-block">{<br>&nbsp;&nbsp;"clients": {<br>&nbsp;&nbsp;&nbsp;&nbsp;"eagle": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"enabled": true,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": ["node", "/path/to/server.js", "--stdio"],<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"selector": "source.tcl"<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;}<br>}</div>
+  </div>
+  <div class="install-content" id="tab-helix">
+    <div class="code-block">[language-server.eagle-ls]<br>command = "node"<br>args = ["/path/to/eagle-lsp/server.js", "--stdio"]<br><br>[[language]]<br>name = "eagle"<br>file-types = ["eagle", "eg", "tcl"]<br>language-servers = ["eagle-ls"]</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Supported Commands</h2>
+  <p style="color:#8b949e;margin-bottom:1rem;">All 120 Eagle built-in commands are documented with completions, hover, and signature help:</p>
+  <div class="cmd-list" id="cmd-list"></div>
+</div>
+
+<div class="section">
+  <h2>LSP Capabilities</h2>
+  <table>
+    <thead><tr><th>Capability</th><th>Method</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Text Document Sync</td><td><code>textDocument/didOpen</code>, <code>didChange</code>, <code>didClose</code></td><td>✅</td></tr>
+      <tr><td>Completion</td><td><code>textDocument/completion</code></td><td>✅</td></tr>
+      <tr><td>Completion Resolve</td><td><code>completionItem/resolve</code></td><td>✅</td></tr>
+      <tr><td>Hover</td><td><code>textDocument/hover</code></td><td>✅</td></tr>
+      <tr><td>Signature Help</td><td><code>textDocument/signatureHelp</code></td><td>✅</td></tr>
+      <tr><td>Diagnostics</td><td><code>textDocument/publishDiagnostics</code></td><td>✅</td></tr>
+      <tr><td>Document Symbols</td><td><code>textDocument/documentSymbol</code></td><td>✅</td></tr>
+      <tr><td>Go to Definition</td><td><code>textDocument/definition</code></td><td>✅</td></tr>
+      <tr><td>Find References</td><td><code>textDocument/references</code></td><td>✅</td></tr>
+      <tr><td>Folding Ranges</td><td><code>textDocument/foldingRange</code></td><td>✅</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+const commands = [
+  'after','append','apply','array','base64','bgerror','break','callback','catch','cd',
+  'clock','close','concat','continue','debug','do','downlevel','encoding','eof','error',
+  'eval','exec','exit','expr','fblocked','fconfigure','fcopy','file','flush','for',
+  'foreach','format','fpclassify','getf','gets','glob','global','guid','hash','host',
+  'if','incr','info','interp','invoke','join','kill','lappend','lassign','lget',
+  'library','lindex','linsert','list','llength','lmap','load','lrange','lremove',
+  'lrepeat','lreplace','lreverse','lsearch','lset','lsort','namespace','napply','nop',
+  'nproc','object','open','package','parse','pid','proc','puts','pwd','read',
+  'regexp','regsub','rename','return','scope','seek','set','setf','socket','source',
+  'split','sql','string','subst','switch','tcl','tell','test1','test2','throw',
+  'time','truncate','try','unload','unset','unsetf','update','uplevel','upvar','uri',
+  'variable','version','vwait','while','xml'
+];
+
+document.getElementById('cmd-list').innerHTML = commands.map(c => `<span><code>${c}</code></span>`).join(' ');
+
+document.getElementById('stats').innerHTML = `
+  <div class="stat"><div class="num">120</div><div class="label">Built-in Commands</div></div>
+  <div class="stat"><div class="num">135+</div><div class="label">Library Procedures</div></div>
+  <div class="stat"><div class="num">10</div><div class="label">LSP Features</div></div>
+  <div class="stat"><div class="num">5+</div><div class="label">Editors Supported</div></div>
+`;
+
+function showTab(name) {
+  document.querySelectorAll('.install-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.install-content').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+</body>
+</html>

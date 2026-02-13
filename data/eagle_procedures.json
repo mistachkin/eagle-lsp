@@ -1,0 +1,2296 @@
+[
+  {
+    "name": "addToPath",
+    "signature": "addToPath dir",
+    "description": "Adds a directory to the system PATH (or LD_LIBRARY_PATH on Unix).",
+    "source_file": "platform.eagle",
+    "args": [
+      {
+        "name": "dir",
+        "description": "Directory to add"
+      }
+    ],
+    "returns": "Non-zero if the path was modified",
+    "example": ""
+  },
+  {
+    "name": "appendArgs",
+    "signature": "appendArgs args",
+    "description": "Appends all arguments into one string verbatim, avoiding undesired string interpolation.",
+    "source_file": "auxiliary.eagle",
+    "args": [],
+    "returns": "Concatenated string",
+    "example": "set result [appendArgs \"Hello, \" $name \"!\"]\n# Equivalent to: set result \"Hello, ${name}!\""
+  },
+  {
+    "name": "appendFile",
+    "signature": "appendFile fileName data",
+    "description": "Appends data to a binary file.",
+    "source_file": "file1.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      },
+      {
+        "name": "data",
+        "description": "Data to append"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "appendLogFile",
+    "signature": "appendLogFile fileName data",
+    "description": "Appends data to a log file.",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to log file"
+      },
+      {
+        "name": "data",
+        "description": "Data to append"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "appendSharedFile",
+    "signature": "appendSharedFile fileName data",
+    "description": "Appends to a file with shared access.",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      },
+      {
+        "name": "data",
+        "description": "Data to append"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "appendSharedLogFile",
+    "signature": "appendSharedLogFile fileName data",
+    "description": "Appends data to a shared log file (allows concurrent access).",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to log file"
+      },
+      {
+        "name": "data",
+        "description": "Data to append"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "canGetManagedType",
+    "signature": "canGetManagedType name allowExtra {typeVarName \"\"} {extraVarName \"\"}",
+    "description": "Checks if a name is usable as a CLR type name, optionally with member access.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Name to check"
+      },
+      {
+        "name": "allowExtra",
+        "description": "Allow extra parts after type name"
+      },
+      {
+        "name": "typeVarName",
+        "description": "Variable to store the type name"
+      },
+      {
+        "name": "extraVarName",
+        "description": "Variable to store extra parts"
+      }
+    ],
+    "returns": "Boolean",
+    "example": ""
+  },
+  {
+    "name": "canUseComSpecDir",
+    "signature": "canUseComSpecDir pattern",
+    "description": "Checks if file searches can use the Windows command shell dir command.",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Search pattern"
+      }
+    ],
+    "returns": "Boolean",
+    "example": ""
+  },
+  {
+    "name": "checkForEngine",
+    "signature": "checkForEngine {wantScripts false} {quiet false} {prompt false} {automatic false}",
+    "description": "Checks for new Eagle engine versions.",
+    "source_file": "update.eagle",
+    "args": [
+      {
+        "name": "wantScripts",
+        "description": "Also check for update scripts"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      },
+      {
+        "name": "prompt",
+        "description": "Prompt before downloading"
+      },
+      {
+        "name": "automatic",
+        "description": "Automatic mode"
+      }
+    ],
+    "returns": "Update information",
+    "example": ""
+  },
+  {
+    "name": "checkForUpdate",
+    "signature": "checkForUpdate {type \"\"} {uri \"\"} {publicKeyToken \"\"} {name \"\"} {culture \"\"} {patchLevel \"\"} {timeStamp \"\"} {wantScripts false} {quiet false} {prompt false} {automatic false}",
+    "description": "Main procedure to check for software updates.",
+    "source_file": "update.eagle",
+    "args": [
+      {
+        "name": "type",
+        "description": "Update type"
+      },
+      {
+        "name": "uri",
+        "description": "Update server URI"
+      },
+      {
+        "name": "publicKeyToken",
+        "description": "Product public key token"
+      },
+      {
+        "name": "name",
+        "description": "Product name"
+      },
+      {
+        "name": "culture",
+        "description": "Product culture"
+      },
+      {
+        "name": "patchLevel",
+        "description": "Current patch level"
+      },
+      {
+        "name": "timeStamp",
+        "description": "Current timestamp"
+      },
+      {
+        "name": "wantScripts",
+        "description": "Download update scripts"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      },
+      {
+        "name": "prompt",
+        "description": "Prompt before downloading"
+      },
+      {
+        "name": "automatic",
+        "description": "Automatic mode"
+      }
+    ],
+    "returns": "Update information or empty string",
+    "example": ""
+  },
+  {
+    "name": "combineFlags",
+    "signature": "combineFlags flags1 flags2 {flags3 \"\"} {noCase false}",
+    "description": "Combines two flag strings and optionally excludes specified flags.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "flags1",
+        "description": "First flag string"
+      },
+      {
+        "name": "flags2",
+        "description": "Second flag string"
+      },
+      {
+        "name": "flags3",
+        "description": "Flags to exclude"
+      },
+      {
+        "name": "noCase",
+        "description": "Case-insensitive comparison"
+      }
+    ],
+    "returns": "Combined flags as comma-separated string",
+    "example": "# Combine enumeration flags\nset flags [combineFlags \"Public\" \"Instance\"]\n# Returns: \"Public, Instance\""
+  },
+  {
+    "name": "compileViaCSharpCodeProvider",
+    "signature": "compileViaCSharpCodeProvider string memory symbols strict resultsVarName errorsVarName args",
+    "description": "Compiles C# code using CSharpCodeProvider (desktop .NET Framework).",
+    "source_file": "csharp.eagle",
+    "args": [
+      {
+        "name": "string",
+        "description": "C# source code"
+      },
+      {
+        "name": "memory",
+        "description": "Compile to memory"
+      },
+      {
+        "name": "symbols",
+        "description": "Generate debug symbols"
+      },
+      {
+        "name": "strict",
+        "description": "Treat warnings as errors"
+      },
+      {
+        "name": "resultsVarName",
+        "description": "Variable for results"
+      },
+      {
+        "name": "errorsVarName",
+        "description": "Variable for errors"
+      },
+      {
+        "name": "args",
+        "description": "Additional options"
+      }
+    ],
+    "returns": "Assembly object on success",
+    "example": ""
+  },
+  {
+    "name": "compileViaDotNetCoreCSharp",
+    "signature": "compileViaDotNetCoreCSharp string memory symbols strict resultsVarName errorsVarName args",
+    "description": "Compiles C# code using the .NET Core SDK command-line compiler.",
+    "source_file": "csharp.eagle",
+    "args": [],
+    "returns": "Assembly object on success",
+    "example": ""
+  },
+  {
+    "name": "copyFilesRecursive",
+    "signature": "copyFilesRecursive sourceDirectory targetDirectory {patterns \"\"} {options \"\"}",
+    "description": "Copies files recursively using Robocopy (Windows only).",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "sourceDirectory",
+        "description": "Source directory"
+      },
+      {
+        "name": "targetDirectory",
+        "description": "Target directory"
+      },
+      {
+        "name": "patterns",
+        "description": "File patterns to copy (default: all)"
+      },
+      {
+        "name": "options",
+        "description": "List of options: `-nocopyopts`, `-nosubdirs`, `-retries:N`, `-junctions`, `-purge`, `-logging`"
+      }
+    ],
+    "returns": "Robocopy output",
+    "example": ""
+  },
+  {
+    "name": "csharpLog",
+    "signature": "csharpLog string {object \"\"}",
+    "description": "Logs C# compilation lifecycle stages.",
+    "source_file": "csharp.eagle",
+    "args": [
+      {
+        "name": "string",
+        "description": "Log message"
+      },
+      {
+        "name": "object",
+        "description": "Optional object to include properties from"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "doesCompileCSharpWork",
+    "signature": "doesCompileCSharpWork {name \"\"} {errorsVarName \"\"} {memory true} args",
+    "description": "Tests if the C# compiler is working.",
+    "source_file": "csharp.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Test class name"
+      },
+      {
+        "name": "errorsVarName",
+        "description": "Variable to store errors"
+      },
+      {
+        "name": "memory",
+        "description": "Compile to memory (vs. file)"
+      },
+      {
+        "name": "args",
+        "description": "Additional compiler arguments"
+      }
+    ],
+    "returns": "Non-zero if compilation succeeds",
+    "example": ""
+  },
+  {
+    "name": "downloadAndExtractNativeTclKitDll",
+    "signature": "downloadAndExtractNativeTclKitDll {channel stdout} {quiet false}",
+    "description": "Downloads and extracts the native TclKit DLL for the current platform.",
+    "source_file": "pkgt.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "downloadAndExtractNativeTclTkDlls",
+    "signature": "downloadAndExtractNativeTclTkDlls {channel stdout} {quiet false}",
+    "description": "Downloads and extracts native Tcl/Tk DLLs for the current platform.",
+    "source_file": "pkgt.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "downloadAndExtractPackageClientToolset",
+    "signature": "downloadAndExtractPackageClientToolset {channel stdout} {quiet false}",
+    "description": "Downloads and extracts the Package Client Toolset.",
+    "source_file": "pkgt.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "Auto-path directory",
+    "example": ""
+  },
+  {
+    "name": "downloadAndExtractSecurityToolset",
+    "signature": "downloadAndExtractSecurityToolset {channel stdout} {quiet false}",
+    "description": "Downloads and extracts the Security Toolset (Harpy and Badge plugins).",
+    "source_file": "pkgt.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "downloadExampleScript",
+    "signature": "downloadExampleScript script {apiKey \"\"} {channel stdout} {quiet false}",
+    "description": "Downloads and saves a named example script.",
+    "source_file": "shell.eagle",
+    "args": [
+      {
+        "name": "script",
+        "description": "Script name"
+      },
+      {
+        "name": "apiKey",
+        "description": "API key"
+      },
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "evalAsync",
+    "signature": "evalAsync doneScript args",
+    "description": "Evaluates a script asynchronously with optional completion notification.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "doneScript",
+        "description": "Script to run when evaluation completes (empty for no notification)"
+      },
+      {
+        "name": "args",
+        "description": "Script to evaluate (concatenated if multiple)"
+      }
+    ],
+    "returns": "Empty string (result goes to callback)",
+    "example": "evalAsync {puts \"Done: $context\"} {\n    after 1000\n    return \"result\"\n}"
+  },
+  {
+    "name": "evaluateInRemoteSandbox",
+    "signature": "evaluateInRemoteSandbox script {apiKey \"\"} {params \"\"} {channel stdout} {quiet false}",
+    "description": "Submits a script to the remote sandbox for evaluation.",
+    "source_file": "shell.eagle",
+    "args": [
+      {
+        "name": "script",
+        "description": "Script to evaluate"
+      },
+      {
+        "name": "apiKey",
+        "description": "API key for authentication"
+      },
+      {
+        "name": "params",
+        "description": "Additional parameters"
+      },
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "Result dictionary",
+    "example": ""
+  },
+  {
+    "name": "execShell",
+    "signature": "execShell options args",
+    "description": "Executes a native Tcl or Eagle sub-shell with the specified arguments.",
+    "source_file": "exec.eagle",
+    "args": [
+      {
+        "name": "options",
+        "description": "Options for the `exec` command"
+      },
+      {
+        "name": "args",
+        "description": "Arguments for the shell"
+      }
+    ],
+    "returns": "Captured output from the shell",
+    "example": "set result [execShell {} -c {puts \"Hello from sub-shell\"}]"
+  },
+  {
+    "name": "exportAndImportPackageCommands",
+    "signature": "exportAndImportPackageCommands namespace exports forget force",
+    "description": "Exports commands from a namespace and imports them into the global namespace.",
+    "source_file": "auxiliary.eagle",
+    "args": [
+      {
+        "name": "namespace",
+        "description": "Source namespace"
+      },
+      {
+        "name": "exports",
+        "description": "List of command names to export"
+      },
+      {
+        "name": "forget",
+        "description": "If true, forget previous imports first"
+      },
+      {
+        "name": "force",
+        "description": "If true, overwrite existing commands"
+      }
+    ],
+    "returns": "Empty string",
+    "example": "exportAndImportPackageCommands [namespace current] [list myProc1 myProc2] true true"
+  },
+  {
+    "name": "filter",
+    "signature": "filter list script",
+    "description": "Returns elements from the list for which the script returns non-zero.",
+    "source_file": "list.eagle",
+    "args": [
+      {
+        "name": "list",
+        "description": "List to filter"
+      },
+      {
+        "name": "script",
+        "description": "Script that receives each element and returns a boolean"
+      }
+    ],
+    "returns": "Filtered list",
+    "example": "set numbers {1 2 3 4 5 6}\nset evens [filter $numbers {expr {$item % 2 == 0}}]  ;# Returns: {2 4 6}"
+  },
+  {
+    "name": "filterForGlob",
+    "signature": "filterForGlob paths",
+    "description": "Filters glob results to remove unwanted entries like \".\" and \"..\".",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "paths",
+        "description": "List of paths"
+      }
+    ],
+    "returns": "Filtered list",
+    "example": ""
+  },
+  {
+    "name": "findDirectories",
+    "signature": "findDirectories pattern",
+    "description": "Finds directories matching a pattern (non-recursive).",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Glob pattern"
+      }
+    ],
+    "returns": "List of matching directories",
+    "example": "set dirs [findDirectories \"/home/user/*\"]"
+  },
+  {
+    "name": "findDirectoriesRecursive",
+    "signature": "findDirectoriesRecursive pattern",
+    "description": "Finds directories matching a pattern (recursive).",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Glob pattern"
+      }
+    ],
+    "returns": "List of matching directories",
+    "example": ""
+  },
+  {
+    "name": "findFiles",
+    "signature": "findFiles pattern",
+    "description": "Finds files matching a pattern (non-recursive).",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Glob pattern"
+      }
+    ],
+    "returns": "List of matching files",
+    "example": "set scripts [findFiles \"*.eagle\"]"
+  },
+  {
+    "name": "findFilesRecursive",
+    "signature": "findFilesRecursive pattern",
+    "description": "Finds files matching a pattern (recursive).",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Glob pattern"
+      }
+    ],
+    "returns": "List of matching files",
+    "example": ""
+  },
+  {
+    "name": "forceScanOfPackages",
+    "signature": "forceScanOfPackages",
+    "description": "Forces a rescan of all available package indexes.",
+    "source_file": "pkgt.eagle",
+    "args": [],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "foundInPath",
+    "signature": "foundInPath dirs dir",
+    "description": "Checks if a directory is in a list of directories (case-insensitive on Windows).",
+    "source_file": "platform.eagle",
+    "args": [
+      {
+        "name": "dirs",
+        "description": "List of directories"
+      },
+      {
+        "name": "dir",
+        "description": "Directory to find"
+      }
+    ],
+    "returns": "Boolean",
+    "example": ""
+  },
+  {
+    "name": "getBasePath",
+    "signature": "getBasePath",
+    "description": "Returns the Eagle core library base path.",
+    "source_file": "info.eagle",
+    "args": [],
+    "returns": "Base directory path (e.g., \"C:\\Eagle\" when loaded from \"C:\\Eagle\\bin\\Eagle.dll\")",
+    "example": ""
+  },
+  {
+    "name": "getBogusPackageName",
+    "signature": "getBogusPackageName",
+    "description": "Builds a package name that never exists to force package index refresh.",
+    "source_file": "pkgt.eagle",
+    "args": [],
+    "returns": "Bogus package name string",
+    "example": ""
+  },
+  {
+    "name": "getCSharpTestProgram",
+    "signature": "getCSharpTestProgram {name \"\"}",
+    "description": "Returns a C# test program for compiler verification.",
+    "source_file": "csharp.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Test class name"
+      }
+    ],
+    "returns": "List with class name and program text",
+    "example": ""
+  },
+  {
+    "name": "getColumnValue",
+    "signature": "getColumnValue row column {default \"\"} {wrap \"\"}",
+    "description": "Gets the value of a database column from a row.",
+    "source_file": "database.eagle",
+    "args": [
+      {
+        "name": "row",
+        "description": "Database row (list of `{columnName value}` pairs)"
+      },
+      {
+        "name": "column",
+        "description": "Column name"
+      },
+      {
+        "name": "default",
+        "description": "Default value if column not found"
+      },
+      {
+        "name": "wrap",
+        "description": "String to wrap around the value"
+      }
+    ],
+    "returns": "Column value or default",
+    "example": "set row {{name \"John\"} {age 30}}\nset name [getColumnValue $row name \"Unknown\"]  ;# Returns: John\nset city [getColumnValue $row city \"N/A\"]      ;# Returns: N/A"
+  },
+  {
+    "name": "getCompileInfo",
+    "signature": "getCompileInfo",
+    "description": "Returns compile-time information for the Eagle core library.",
+    "source_file": "info.eagle",
+    "args": [],
+    "returns": "List with TimeStamp, ImageRuntimeVersion, ModuleVersionId, and CompileOptions",
+    "example": ""
+  },
+  {
+    "name": "getDefaultValue",
+    "signature": "getDefaultValue typeName",
+    "description": "Returns the default value for a CLR type.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "typeName",
+        "description": "CLR type name"
+      }
+    ],
+    "returns": "`0` for value types, `\"null\"` for reference types",
+    "example": ""
+  },
+  {
+    "name": "getDictionaryValue",
+    "signature": "getDictionaryValue dictionary name {default \"\"} {wrap \"\"}",
+    "description": "Finds and returns a named value from a dictionary (list of name-value pairs).",
+    "source_file": "auxiliary.eagle",
+    "args": [
+      {
+        "name": "dictionary",
+        "description": "List in format `{name1 value1 name2 value2 ...}`"
+      },
+      {
+        "name": "name",
+        "description": "Name to search for"
+      },
+      {
+        "name": "default",
+        "description": "Default value if not found"
+      },
+      {
+        "name": "wrap",
+        "description": "String to wrap around the value"
+      }
+    ],
+    "returns": "The found value (optionally wrapped) or the default",
+    "example": "set dict {color red size large}\nset color [getDictionaryValue $dict color \"unknown\"]  ;# Returns: red\nset shape [getDictionaryValue $dict shape \"circle\"]   ;# Returns: circle"
+  },
+  {
+    "name": "getDotNetCoreSdkPath",
+    "signature": "getDotNetCoreSdkPath",
+    "description": "Returns the path to the .NET Core SDK.",
+    "source_file": "csharp.eagle",
+    "args": [],
+    "returns": "SDK path or empty string on error",
+    "example": ""
+  },
+  {
+    "name": "getDotNetStandardReferencePath",
+    "signature": "getDotNetStandardReferencePath {packageVersion \"\"} {standardVersion \"\"} {useSdkVersion false}",
+    "description": "Returns the path to .NET Standard reference assemblies.",
+    "source_file": "csharp.eagle",
+    "args": [
+      {
+        "name": "packageVersion",
+        "description": "NuGet package version"
+      },
+      {
+        "name": "standardVersion",
+        "description": ".NET Standard version"
+      },
+      {
+        "name": "useSdkVersion",
+        "description": "Use SDK version for lookup"
+      }
+    ],
+    "returns": "Reference path or empty string",
+    "example": ""
+  },
+  {
+    "name": "getEnvironmentVariable",
+    "signature": "getEnvironmentVariable name",
+    "description": "Returns the value of an environment variable, or empty string if it doesn't exist.",
+    "source_file": "auxiliary.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Environment variable name"
+      }
+    ],
+    "returns": "The environment variable value or empty string",
+    "example": "set home [getEnvironmentVariable HOME]\nset path [getEnvironmentVariable PATH]"
+  },
+  {
+    "name": "getExternalIpAddress",
+    "signature": "getExternalIpAddress {apiKey \"\"} {channel stdout} {quiet false}",
+    "description": "Queries and returns the current external IP address.",
+    "source_file": "shell.eagle",
+    "args": [
+      {
+        "name": "apiKey",
+        "description": "API key"
+      },
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "IP address string",
+    "example": "debugBreakWithNewConsole args"
+  },
+  {
+    "name": "getHostSize",
+    "signature": "getHostSize",
+    "description": "Returns the host console size in columns and rows.",
+    "source_file": "compat.eagle",
+    "args": [],
+    "returns": "List `{columns rows}`, defaults to `{80 25}` if unavailable",
+    "example": ""
+  },
+  {
+    "name": "getOwnerForProcess",
+    "signature": "getOwnerForProcess process {noIntegrity false} {refresh false}",
+    "description": "Determines the owner of a process.",
+    "source_file": "process.eagle",
+    "args": [
+      {
+        "name": "process",
+        "description": "Process object"
+      },
+      {
+        "name": "noIntegrity",
+        "description": "Skip integrity level check"
+      },
+      {
+        "name": "refresh",
+        "description": "Refresh cached information"
+      }
+    ],
+    "returns": "`DOMAIN\\USER` format string or error information",
+    "example": ""
+  },
+  {
+    "name": "getPackageInstallPath",
+    "signature": "getPackageInstallPath {packageName \"\"} {temporaryPrefix \"\"}",
+    "description": "Returns the directory where packages should be installed.",
+    "source_file": "info.eagle",
+    "args": [
+      {
+        "name": "packageName",
+        "description": "Optional package name (creates subdirectory)"
+      },
+      {
+        "name": "temporaryPrefix",
+        "description": "Prefix for temporary directory if Tcl library unavailable"
+      }
+    ],
+    "returns": "Installation directory path",
+    "example": ""
+  },
+  {
+    "name": "getPlatformInfo",
+    "signature": "getPlatformInfo name {default \"\"}",
+    "description": "Returns specific Eagle platform information.",
+    "source_file": "info.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Platform info key (e.g., \"machine\", \"runtime\")"
+      },
+      {
+        "name": "default",
+        "description": "Default value if not found"
+      }
+    ],
+    "returns": "Platform information value",
+    "example": ""
+  },
+  {
+    "name": "getPluginFlags",
+    "signature": "getPluginFlags pattern",
+    "description": "Returns the flags for the first loaded plugin matching a pattern.",
+    "source_file": "info.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Regular expression pattern"
+      }
+    ],
+    "returns": "List of plugin flags",
+    "example": ""
+  },
+  {
+    "name": "getPluginName",
+    "signature": "getPluginName pattern",
+    "description": "Returns the name of the first loaded plugin matching a pattern.",
+    "source_file": "info.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Regular expression pattern"
+      }
+    ],
+    "returns": "Plugin name or empty string",
+    "example": ""
+  },
+  {
+    "name": "getPluginPath",
+    "signature": "getPluginPath pattern",
+    "description": "Returns the file path of the first loaded plugin matching a pattern.",
+    "source_file": "info.eagle",
+    "args": [
+      {
+        "name": "pattern",
+        "description": "Regular expression pattern"
+      }
+    ],
+    "returns": "Plugin file path or empty string",
+    "example": ""
+  },
+  {
+    "name": "getProcesses",
+    "signature": "getProcesses name",
+    "description": "Returns a list of process IDs matching a name.",
+    "source_file": "process.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Process name (empty for all processes)"
+      }
+    ],
+    "returns": "List of process IDs",
+    "example": ""
+  },
+  {
+    "name": "getReturnType",
+    "signature": "getReturnType object member",
+    "description": "Returns the type name of the return type for a CLR member.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "object",
+        "description": "Object or type name"
+      },
+      {
+        "name": "member",
+        "description": "Member name"
+      }
+    ],
+    "returns": "Assembly-qualified type name",
+    "example": ""
+  },
+  {
+    "name": "getRowColumnValue",
+    "signature": "getRowColumnValue varName id column {default \"\"} {wrap \"\"}",
+    "description": "Gets a column value from a specific row in an array of rows.",
+    "source_file": "database.eagle",
+    "args": [
+      {
+        "name": "varName",
+        "description": "Name of array variable containing rows"
+      },
+      {
+        "name": "id",
+        "description": "Row identifier (array index)"
+      },
+      {
+        "name": "column",
+        "description": "Column name"
+      },
+      {
+        "name": "default",
+        "description": "Default value if not found"
+      },
+      {
+        "name": "wrap",
+        "description": "String to wrap around the value"
+      }
+    ],
+    "returns": "Column value or default",
+    "example": ""
+  },
+  {
+    "name": "getRuntimeCommandLine",
+    "signature": "getRuntimeCommandLine fileName",
+    "description": "Returns command line arguments needed to run an executable on the current runtime.",
+    "source_file": "exec.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Executable file name"
+      }
+    ],
+    "returns": "List of command line arguments",
+    "example": ""
+  },
+  {
+    "name": "getShellExecutableName",
+    "signature": "getShellExecutableName",
+    "description": "Returns the fully qualified file name for the shell executable.",
+    "source_file": "exec.eagle",
+    "args": [],
+    "returns": "Path to the shell executable (native or managed)",
+    "example": ""
+  },
+  {
+    "name": "getStringFromObjectHandle",
+    "signature": "getStringFromObjectHandle value {default \"\"}",
+    "description": "Converts an opaque object handle to a string.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "value",
+        "description": "Object handle"
+      },
+      {
+        "name": "default",
+        "description": "Default value if conversion fails"
+      }
+    ],
+    "returns": "String representation or default",
+    "example": ""
+  },
+  {
+    "name": "getUpdateFileName",
+    "signature": "getUpdateFileName {directory \"\"}",
+    "description": "Returns the path to the updates.tsv file.",
+    "source_file": "update.eagle",
+    "args": [
+      {
+        "name": "directory",
+        "description": "Directory containing the file"
+      }
+    ],
+    "returns": "Full path to updates.tsv",
+    "example": ""
+  },
+  {
+    "name": "hasRuntimeOption",
+    "signature": "hasRuntimeOption name {default false}",
+    "description": "Checks if a runtime option is currently set.",
+    "source_file": "runopt.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Option name"
+      },
+      {
+        "name": "default",
+        "description": "Default return value"
+      }
+    ],
+    "returns": "Non-zero if option is set",
+    "example": "if {[hasRuntimeOption verbose]} {\n    puts \"Verbose mode enabled\"\n}"
+  },
+  {
+    "name": "haveColumnValue",
+    "signature": "haveColumnValue row column",
+    "description": "Checks if a database column exists within a row.",
+    "source_file": "database.eagle",
+    "args": [
+      {
+        "name": "row",
+        "description": "Database row (list of `{columnName value}` pairs)"
+      },
+      {
+        "name": "column",
+        "description": "Column name to find"
+      }
+    ],
+    "returns": "Non-zero if the column exists",
+    "example": ""
+  },
+  {
+    "name": "haveGaruda",
+    "signature": "haveGaruda {varName \"\"}",
+    "description": "Checks if the Eagle Native Package for Tcl (Garuda) is loaded.",
+    "source_file": "info.eagle",
+    "args": [
+      {
+        "name": "varName",
+        "description": "Optional variable to store the Garuda package ID"
+      }
+    ],
+    "returns": "Non-zero if Garuda is available",
+    "example": ""
+  },
+  {
+    "name": "haveRowColumnValue",
+    "signature": "haveRowColumnValue varName id column",
+    "description": "Checks if a column exists within a specific row in an array of rows.",
+    "source_file": "database.eagle",
+    "args": [
+      {
+        "name": "varName",
+        "description": "Name of array variable containing rows"
+      },
+      {
+        "name": "id",
+        "description": "Row identifier (array index)"
+      },
+      {
+        "name": "column",
+        "description": "Column name to find"
+      }
+    ],
+    "returns": "Non-zero if the column exists in the specified row",
+    "example": ""
+  },
+  {
+    "name": "help",
+    "signature": "help args",
+    "description": "Displays help via the interactive \"#help\" command.",
+    "source_file": "safe.eagle",
+    "args": [],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "isAdministrator",
+    "signature": "isAdministrator",
+    "description": "Checks if the current user has administrator privileges.",
+    "source_file": "platform.eagle",
+    "args": [],
+    "returns": "Non-zero if administrator",
+    "example": ""
+  },
+  {
+    "name": "isBasicType",
+    "signature": "isBasicType value {subset basic}",
+    "description": "Checks if a CLR object is a basic type (losslessly convertible to string).",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "value",
+        "description": "Object handle"
+      },
+      {
+        "name": "subset",
+        "description": "Type subset: `basic`, `integral`, `integral8`, `fixedPoint`, `floatingPoint`, `string`, `dateTime`, `dbNull`"
+      }
+    ],
+    "returns": "Boolean",
+    "example": ""
+  },
+  {
+    "name": "isDotNetCore",
+    "signature": "isDotNetCore",
+    "description": "Detects if running in Eagle on .NET Core (or .NET 5+).",
+    "source_file": "platform.eagle",
+    "args": [],
+    "returns": "Non-zero if running on .NET Core",
+    "example": ""
+  },
+  {
+    "name": "isEagle",
+    "signature": "isEagle",
+    "description": "Detects whether the script is running in Eagle or vanilla Tcl.",
+    "source_file": "init.eagle",
+    "args": [],
+    "returns": "Non-zero if running in Eagle, zero if running in Tcl",
+    "example": "if {[isEagle]} {\n    puts \"Running in Eagle\"\n} else {\n    puts \"Running in Tcl\"\n}"
+  },
+  {
+    "name": "isInteractive",
+    "signature": "isInteractive",
+    "description": "Checks if there is an interactive user who can respond to prompts.",
+    "source_file": "platform.eagle",
+    "args": [],
+    "returns": "Non-zero if interactive",
+    "example": ""
+  },
+  {
+    "name": "isMacOS",
+    "signature": "isMacOS",
+    "description": "Detects if running on macOS (Darwin).",
+    "source_file": "platform.eagle",
+    "args": [],
+    "returns": "Non-zero if macOS",
+    "example": ""
+  },
+  {
+    "name": "isManagedType",
+    "signature": "isManagedType name",
+    "description": "Checks if a name represents a valid CLR type.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Type name"
+      }
+    ],
+    "returns": "Boolean",
+    "example": ""
+  },
+  {
+    "name": "isMono",
+    "signature": "isMono",
+    "description": "Detects if running in Eagle on the Mono runtime.",
+    "source_file": "platform.eagle",
+    "args": [],
+    "returns": "Non-zero if running on Mono",
+    "example": ""
+  },
+  {
+    "name": "isNonNullObjectHandle",
+    "signature": "isNonNullObjectHandle value",
+    "description": "Checks if a value is a valid, non-null object handle.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "value",
+        "description": "Value to check"
+      }
+    ],
+    "returns": "Boolean",
+    "example": "set obj [object create System.Object]\nisNonNullObjectHandle $obj     ;# Returns: 1\nobject dispose $obj"
+  },
+  {
+    "name": "isObjectHandle",
+    "signature": "isObjectHandle value",
+    "description": "Checks if a value can be used as an opaque object handle.",
+    "source_file": "object.eagle",
+    "args": [
+      {
+        "name": "value",
+        "description": "Value to check"
+      }
+    ],
+    "returns": "Boolean",
+    "example": "set obj [object create System.Object]\nisObjectHandle $obj            ;# Returns: 1\nisObjectHandle \"not an object\" ;# Returns: 0\nobject dispose $obj"
+  },
+  {
+    "name": "isSameFileName",
+    "signature": "isSameFileName fileName1 fileName2",
+    "description": "Compares two file names for equality using the most robust method available.",
+    "source_file": "platform.eagle",
+    "args": [
+      {
+        "name": "fileName1",
+        "description": "First file name"
+      },
+      {
+        "name": "fileName2",
+        "description": "Second file name"
+      }
+    ],
+    "returns": "Non-zero if the files are the same",
+    "example": ""
+  },
+  {
+    "name": "isTclThread",
+    "signature": "isTclThread name",
+    "description": "Checks if a name represents a thread managed by the native Tcl integration subsystem.",
+    "source_file": "info.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Thread name"
+      }
+    ],
+    "returns": "Non-zero if it's a Tcl thread",
+    "example": ""
+  },
+  {
+    "name": "isUpdateInstalled",
+    "signature": "isUpdateInstalled updateId {directory \"\"} {script \"\"}",
+    "description": "Checks if a specific update is installed.",
+    "source_file": "update.eagle",
+    "args": [
+      {
+        "name": "updateId",
+        "description": "Update identifier"
+      },
+      {
+        "name": "directory",
+        "description": "Directory containing updates.tsv"
+      },
+      {
+        "name": "script",
+        "description": "Optional script to evaluate for each found update"
+      }
+    ],
+    "returns": "Non-zero if installed",
+    "example": ""
+  },
+  {
+    "name": "isWindows",
+    "signature": "isWindows",
+    "description": "Detects if running on Windows.",
+    "source_file": "platform.eagle",
+    "args": [],
+    "returns": "Non-zero if Windows",
+    "example": ""
+  },
+  {
+    "name": "lappendArgs",
+    "signature": "lappendArgs args",
+    "description": "Appends all arguments as list elements and returns the resulting list.",
+    "source_file": "list.eagle",
+    "args": [],
+    "returns": "A list containing all arguments",
+    "example": "set items [lappendArgs \"a\" \"b\" \"c\"]  ;# Returns: {a b c}"
+  },
+  {
+    "name": "ldifference",
+    "signature": "ldifference list1 list2",
+    "description": "Returns elements present in one list but not the other (symmetric difference).",
+    "source_file": "list.eagle",
+    "args": [
+      {
+        "name": "list1",
+        "description": "First list"
+      },
+      {
+        "name": "list2",
+        "description": "Second list"
+      }
+    ],
+    "returns": "List of elements unique to either list",
+    "example": "set a {1 2 3 4}\nset b {3 4 5 6}\nset diff [ldifference $a $b]  ;# Returns: {1 2 5 6}"
+  },
+  {
+    "name": "listExampleScripts",
+    "signature": "listExampleScripts {apiKey \"\"} {channel stdout} {quiet false}",
+    "description": "Lists available named example scripts.",
+    "source_file": "shell.eagle",
+    "args": [
+      {
+        "name": "apiKey",
+        "description": "API key"
+      },
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "List of script names",
+    "example": ""
+  },
+  {
+    "name": "listRuntimeOptions",
+    "signature": "listRuntimeOptions {default \"\"}",
+    "description": "Returns a list of runtime options that are currently set.",
+    "source_file": "runopt.eagle",
+    "args": [
+      {
+        "name": "default",
+        "description": "Default return value"
+      }
+    ],
+    "returns": "List of option names",
+    "example": ""
+  },
+  {
+    "name": "loadGarudaForUseByEagle",
+    "signature": "loadGarudaForUseByEagle {machine \"\"} {configuration \"\"} {suffix \"\"} {methodFlags true} {noNormalize true} {quiet false}",
+    "description": "Loads the native Tcl library, enables command bridging, and loads the Eagle Native Package for Tcl (Garuda).",
+    "source_file": "init.eagle",
+    "args": [
+      {
+        "name": "machine",
+        "description": "Target machine architecture (optional, auto-detected)"
+      },
+      {
+        "name": "configuration",
+        "description": "Build configuration (optional, auto-detected)"
+      },
+      {
+        "name": "suffix",
+        "description": "Test suffix (optional)"
+      },
+      {
+        "name": "methodFlags",
+        "description": "Garuda method flags (default: true for METHOD_PROTOCOL_V1R2)"
+      },
+      {
+        "name": "noNormalize",
+        "description": "Avoid Tcl junction bug (default: true)"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress logging (default: false)"
+      }
+    ],
+    "returns": "Empty string on success",
+    "example": ""
+  },
+  {
+    "name": "loadPackageClientToolset",
+    "signature": "loadPackageClientToolset {directory auto} {apiKeys \"\"} {hookUnknown true} {enableSecurity true} {isolateSecurity false} {strictSecurity false} {fetchKeyRing false} {debug false}",
+    "description": "Loads the package client toolset via package require.",
+    "source_file": "pkgt.eagle",
+    "args": [
+      {
+        "name": "directory",
+        "description": "Toolset directory (\"auto\" for auto-detect)"
+      },
+      {
+        "name": "apiKeys",
+        "description": "API keys for package repository"
+      },
+      {
+        "name": "hookUnknown",
+        "description": "Hook the unknown package handler"
+      },
+      {
+        "name": "enableSecurity",
+        "description": "Enable security features"
+      },
+      {
+        "name": "isolateSecurity",
+        "description": "Isolate security"
+      },
+      {
+        "name": "strictSecurity",
+        "description": "Strict security mode"
+      },
+      {
+        "name": "fetchKeyRing",
+        "description": "Fetch key ring"
+      },
+      {
+        "name": "debug",
+        "description": "Debug mode"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "loadScripts",
+    "signature": "loadScripts directory fileNamesOnly",
+    "description": "Sources other script files that belong to the package.",
+    "source_file": "init.eagle",
+    "args": [
+      {
+        "name": "directory",
+        "description": "Directory containing scripts (uses `$tcl_library` if empty)"
+      },
+      {
+        "name": "fileNamesOnly",
+        "description": "List of script file names to load"
+      }
+    ],
+    "returns": "Empty string on success",
+    "example": ""
+  },
+  {
+    "name": "lshuffle",
+    "signature": "lshuffle list",
+    "description": "Pseudo-randomly shuffles a list using the Fisher-Yates algorithm.",
+    "source_file": "list.eagle",
+    "args": [
+      {
+        "name": "list",
+        "description": "List to shuffle"
+      }
+    ],
+    "returns": "Shuffled list",
+    "example": "set cards {1 2 3 4 5}\nset shuffled [lshuffle $cards]  ;# e.g., {3 1 5 2 4}"
+  },
+  {
+    "name": "makeAsciiChannel",
+    "signature": "makeAsciiChannel channel",
+    "description": "Reconfigures a channel for ASCII mode with auto line-ending translation.",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Channel identifier"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "makeBinaryChannel",
+    "signature": "makeBinaryChannel channel",
+    "description": "Reconfigures a channel for full binary mode.",
+    "source_file": "file1.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Channel identifier"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "makeLogChannel",
+    "signature": "makeLogChannel channel",
+    "description": "Reconfigures a channel for use by the logging subsystem.",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Channel identifier"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "makeProcedureFast",
+    "signature": "makeProcedureFast name fast",
+    "description": "Experimental optimization hint. Marks a procedure for potential fast-path execution by the interpreter engine. The exact effect is implementation-defined and may change.",
+    "source_file": "init.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Procedure name"
+      },
+      {
+        "name": "fast",
+        "description": "Boolean to enable/disable fast mode"
+      }
+    ],
+    "returns": "Empty string",
+    "example": "# Mark a hot-path procedure for optimization\nmakeProcedureFast myProc true"
+  },
+  {
+    "name": "makeUnicodeBinaryChannel",
+    "signature": "makeUnicodeBinaryChannel channel",
+    "description": "Reconfigures a channel for Unicode mode with binary (no) line-ending translation.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Channel identifier"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "makeUnicodeChannel",
+    "signature": "makeUnicodeChannel channel",
+    "description": "Reconfigures a channel for Unicode mode with auto line-ending translation.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Channel identifier"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "makeUpdateId",
+    "signature": "makeUpdateId args",
+    "description": "Creates an identifier for use with update tracking.",
+    "source_file": "update.eagle",
+    "args": [],
+    "returns": "Update identifier string",
+    "example": ""
+  },
+  {
+    "name": "makeUtf8Channel",
+    "signature": "makeUtf8Channel channel",
+    "description": "Reconfigures a channel for UTF-8 mode.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Channel identifier"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "makeVariableFast",
+    "signature": "makeVariableFast name fast",
+    "description": "Experimental optimization hint. Marks a variable for potential fast-path access by the interpreter engine. The exact effect is implementation-defined and may change.",
+    "source_file": "init.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Variable name"
+      },
+      {
+        "name": "fast",
+        "description": "Boolean to enable/disable fast mode"
+      }
+    ],
+    "returns": "Empty string",
+    "example": "# Mark a frequently-accessed variable for optimization\nmakeVariableFast myVar true"
+  },
+  {
+    "name": "map",
+    "signature": "map list script",
+    "description": "Applies a transformation script to each list element.",
+    "source_file": "list.eagle",
+    "args": [
+      {
+        "name": "list",
+        "description": "List to transform"
+      },
+      {
+        "name": "script",
+        "description": "Script that receives each element and returns transformed value"
+      }
+    ],
+    "returns": "Transformed list",
+    "example": "set numbers {1 2 3 4}\nset doubled [map $numbers {expr {$item * 2}}]  ;# Returns: {2 4 6 8}"
+  },
+  {
+    "name": "markUpdateInstalled",
+    "signature": "markUpdateInstalled updateId installed {directory \"\"} {notes \"\"}",
+    "description": "Marks an update as installed or removes the installation mark.",
+    "source_file": "update.eagle",
+    "args": [
+      {
+        "name": "updateId",
+        "description": "Update identifier"
+      },
+      {
+        "name": "installed",
+        "description": "True to mark installed, false to unmark"
+      },
+      {
+        "name": "directory",
+        "description": "Directory containing updates.tsv"
+      },
+      {
+        "name": "notes",
+        "description": "Optional notes"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "maybeGetExitCode",
+    "signature": "maybeGetExitCode value {default \"\"}",
+    "description": "Extracts the exit code from $::errorCode after an exec command.",
+    "source_file": "exec.eagle",
+    "args": [
+      {
+        "name": "value",
+        "description": "The `$::errorCode` value"
+      },
+      {
+        "name": "default",
+        "description": "Default value if no exit code found"
+      }
+    ],
+    "returns": "Exit code as integer or default",
+    "example": "if {[catch {exec somecommand} result]} {\n    set exitCode [maybeGetExitCode $::errorCode -1]\n}"
+  },
+  {
+    "name": "maybeLoadScripts",
+    "signature": "maybeLoadScripts directory fileNamesOnly",
+    "description": "Like loadScripts, but skips files that have been explicitly forbidden via ::no($fileNameOnly).",
+    "source_file": "init.eagle",
+    "args": [
+      {
+        "name": "directory",
+        "description": "Directory containing scripts"
+      },
+      {
+        "name": "fileNamesOnly",
+        "description": "List of script file names to load"
+      }
+    ],
+    "returns": "Empty string on success",
+    "example": ""
+  },
+  {
+    "name": "parray",
+    "signature": "parray a ?pattern?",
+    "description": "Prints the contents of an array to stdout, emulating the native Tcl parray procedure.",
+    "source_file": "compat.eagle",
+    "args": [
+      {
+        "name": "a",
+        "description": "Array name"
+      },
+      {
+        "name": "pattern",
+        "description": "Optional glob pattern to filter names"
+      }
+    ],
+    "returns": "Empty string (output goes to stdout)",
+    "example": "array set data {name \"John\" age 30 city \"NYC\"}\nparray data\n# Output:\n# data(age)  = 30\n# data(city) = NYC\n# data(name) = John"
+  },
+  {
+    "name": "pdict",
+    "signature": "pdict d",
+    "description": "Prints the contents of a dictionary to stdout.",
+    "source_file": "compat.eagle",
+    "args": [
+      {
+        "name": "d",
+        "description": "Dictionary (list of name-value pairs)"
+      }
+    ],
+    "returns": "Empty string (output goes to stdout)",
+    "example": ""
+  },
+  {
+    "name": "populateTypesForComSpecDir",
+    "signature": "populateTypesForComSpecDir dirVarName fileVarName",
+    "description": "Populates arrays with type options for the Windows dir command.",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "dirVarName",
+        "description": "Variable name for directory types"
+      },
+      {
+        "name": "fileVarName",
+        "description": "Variable name for file types"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "populateTypesForGlob",
+    "signature": "populateTypesForGlob dirVarName fileVarName",
+    "description": "Populates arrays with -types option values for glob.",
+    "source_file": "file3.eagle",
+    "args": [
+      {
+        "name": "dirVarName",
+        "description": "Variable name for directory types"
+      },
+      {
+        "name": "fileVarName",
+        "description": "Variable name for file types"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "quit",
+    "signature": "quit args",
+    "description": "Exits the interactive shell.",
+    "source_file": "safe.eagle",
+    "args": [],
+    "returns": "Does not return (exits)",
+    "example": "#support"
+  },
+  {
+    "name": "readAsciiFile",
+    "signature": "readAsciiFile fileName",
+    "description": "Reads all data from an ASCII text file.",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      }
+    ],
+    "returns": "File contents as ASCII text",
+    "example": ""
+  },
+  {
+    "name": "readFile",
+    "signature": "readFile fileName",
+    "description": "Reads all data from a binary file.",
+    "source_file": "file1.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      }
+    ],
+    "returns": "File contents as binary data",
+    "example": "set data [readFile \"image.png\"]"
+  },
+  {
+    "name": "readSharedFile",
+    "signature": "readSharedFile fileName",
+    "description": "Reads from a file with shared access (allows concurrent readers/writers).",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      }
+    ],
+    "returns": "File contents",
+    "example": ""
+  },
+  {
+    "name": "readUnicodeBinaryFile",
+    "signature": "readUnicodeBinaryFile fileName",
+    "description": "Reads from a Unicode binary file (no line-ending translation).",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      }
+    ],
+    "returns": "File contents",
+    "example": ""
+  },
+  {
+    "name": "readUnicodeFile",
+    "signature": "readUnicodeFile fileName",
+    "description": "Reads all data from a Unicode file.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      }
+    ],
+    "returns": "File contents",
+    "example": ""
+  },
+  {
+    "name": "readUtf8File",
+    "signature": "readUtf8File fileName",
+    "description": "Reads from a UTF-8 file.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      }
+    ],
+    "returns": "File contents",
+    "example": ""
+  },
+  {
+    "name": "reduce",
+    "signature": "reduce list script",
+    "description": "Reduces a list to a single value by applying a script cumulatively.",
+    "source_file": "list.eagle",
+    "args": [
+      {
+        "name": "list",
+        "description": "List to reduce"
+      },
+      {
+        "name": "script",
+        "description": "Script receiving `result` and `item`, returns accumulated value"
+      }
+    ],
+    "returns": "Final accumulated value",
+    "example": "set numbers {1 2 3 4 5}\nset sum [reduce $numbers {expr {$result + $item}}]  ;# Returns: 15"
+  },
+  {
+    "name": "removeFromPath",
+    "signature": "removeFromPath dir",
+    "description": "Removes a directory from the system PATH.",
+    "source_file": "platform.eagle",
+    "args": [
+      {
+        "name": "dir",
+        "description": "Directory to remove"
+      }
+    ],
+    "returns": "Non-zero if the path was modified",
+    "example": ""
+  },
+  {
+    "name": "removeRuntimeOption",
+    "signature": "removeRuntimeOption name",
+    "description": "Removes a runtime option.",
+    "source_file": "runopt.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Option name"
+      }
+    ],
+    "returns": "Non-zero if removed successfully",
+    "example": ""
+  },
+  {
+    "name": "requestLicenseCertificate",
+    "signature": "requestLicenseCertificate {channel stdout} {quiet false}",
+    "description": "Requests an Eagle license certificate from the license server.",
+    "source_file": "shell.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "quiet",
+        "description": "Suppress output"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "runUpdateAndExit",
+    "signature": "runUpdateAndExit {automatic false} {whatIf false}",
+    "description": "Runs the updater tool and exits the process.",
+    "source_file": "update.eagle",
+    "args": [
+      {
+        "name": "automatic",
+        "description": "Automatic mode"
+      },
+      {
+        "name": "whatIf",
+        "description": "Preview mode (don't actually update)"
+      }
+    ],
+    "returns": "Does not return (exits process)",
+    "example": ""
+  },
+  {
+    "name": "setupPackageToolsetVars",
+    "signature": "setupPackageToolsetVars force {cleanup false}",
+    "description": "Sets up default configuration for the package toolset.",
+    "source_file": "pkgt.eagle",
+    "args": [
+      {
+        "name": "force",
+        "description": "Force setup"
+      },
+      {
+        "name": "cleanup",
+        "description": "Clean up existing configuration"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "setupUnzipVars",
+    "signature": "setupUnzipVars force {cleanup false}",
+    "description": "Sets up default configuration parameters for the unzip package.",
+    "source_file": "unzip.eagle",
+    "args": [
+      {
+        "name": "force",
+        "description": "Force setup even if already done"
+      },
+      {
+        "name": "cleanup",
+        "description": "Clean up existing configuration"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "sourceWithInfo",
+    "signature": "sourceWithInfo args",
+    "description": "Sources a script file while preserving location information for procedures defined within it.",
+    "source_file": "init.eagle",
+    "args": [],
+    "returns": "Result of the sourced script",
+    "example": "sourceWithInfo \"mylib.eagle\"    ;# Same as source, but tracks procedure locations"
+  },
+  {
+    "name": "tclLog",
+    "signature": "tclLog string",
+    "description": "Emulates the native Tcl tclLog command by writing to stderr.",
+    "source_file": "compat.eagle",
+    "args": [
+      {
+        "name": "string",
+        "description": "Message to log"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "tclLogForCommand",
+    "signature": "tclLogForCommand {command \"\"}",
+    "description": "Emits a Tcl log message based on the calling procedure.",
+    "source_file": "exec.eagle",
+    "args": [
+      {
+        "name": "command",
+        "description": "Optional command to include in log"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "tclPkgUnknown",
+    "signature": "tclPkgUnknown name args",
+    "description": "Package unknown handler. Called automatically when package require cannot find a package. Re-scans auto_path directories for pkgIndex.tcl files to discover newly available packages.",
+    "source_file": "init.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "The requested package name"
+      },
+      {
+        "name": "args",
+        "description": "Additional arguments"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "test",
+    "signature": "test name description args",
+    "description": "Emulates the native Tcl test command from the tcltest package. Automatically detects old-style vs new-style tests.",
+    "source_file": "compat.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Test name"
+      },
+      {
+        "name": "description",
+        "description": "Test description"
+      },
+      {
+        "name": "args",
+        "description": "Test arguments (constraints, body, result, etc.)"
+      }
+    ],
+    "returns": "Test result",
+    "example": ""
+  },
+  {
+    "name": "toggleRuntimeOption",
+    "signature": "toggleRuntimeOption name {value \"\"}",
+    "description": "Toggles a runtime option or sets it to a specific value.",
+    "source_file": "runopt.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "Option name"
+      },
+      {
+        "name": "value",
+        "description": "Specific value to set (empty to toggle)"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "tqlog",
+    "signature": "tqlog string",
+    "description": "Adds a message to the test log queue for later writing.",
+    "source_file": "testlog.eagle",
+    "args": [
+      {
+        "name": "string",
+        "description": "Message to log"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "tqputs",
+    "signature": "tqputs channel string",
+    "description": "Emits a message to a channel and adds it to the test log queue.",
+    "source_file": "testlog.eagle",
+    "args": [
+      {
+        "name": "channel",
+        "description": "Output channel"
+      },
+      {
+        "name": "string",
+        "description": "Message to emit"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "unknown",
+    "signature": "unknown name args",
+    "description": "Unknown command handler for safe interpreters - simply raises an error.",
+    "source_file": "init.eagle",
+    "args": [
+      {
+        "name": "name",
+        "description": "The unknown command name"
+      },
+      {
+        "name": "args",
+        "description": "Arguments passed to the command"
+      }
+    ],
+    "returns": "Error with \"invalid command name\" message",
+    "example": "# Default behavior: error for unknown commands\nunknown nonexistentCmd    ;# Error: invalid command name \"nonexistentCmd\"\n\n# With eagleUnknownObjectInvoke, CLR types become commands:\n# System.Math Max 1 2      ;# Returns: 2  (if runtime option is set)"
+  },
+  {
+    "name": "unknownObjectInvoke",
+    "signature": "unknownObjectInvoke level name args",
+    "description": "Handler for the unknown command that treats command names as CLR type names.",
+    "source_file": "unkobj.eagle",
+    "args": [
+      {
+        "name": "level",
+        "description": "Call stack level"
+      },
+      {
+        "name": "name",
+        "description": "Unknown command name (treated as type name)"
+      },
+      {
+        "name": "args",
+        "description": "Arguments for the invocation"
+      }
+    ],
+    "returns": "Result of the object invocation",
+    "example": ""
+  },
+  {
+    "name": "unzipMustBeInstalled",
+    "signature": "unzipMustBeInstalled",
+    "description": "Verifies that the unzip command line tool is installed.",
+    "source_file": "unzip.eagle",
+    "args": [],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "vwaitLocked",
+    "signature": "vwaitLocked varName isArray script",
+    "description": "Locks a variable while evaluating a script (thread-safe).",
+    "source_file": "runopt.eagle",
+    "args": [
+      {
+        "name": "varName",
+        "description": "Variable name"
+      },
+      {
+        "name": "isArray",
+        "description": "True if variable is an array"
+      },
+      {
+        "name": "script",
+        "description": "Script to evaluate"
+      }
+    ],
+    "returns": "Script result",
+    "example": ""
+  },
+  {
+    "name": "waitForProcesses",
+    "signature": "waitForProcesses ids timeout {collect true} {kill true}",
+    "description": "Waits for processes to exit within a timeout.",
+    "source_file": "process.eagle",
+    "args": [
+      {
+        "name": "ids",
+        "description": "List of process IDs"
+      },
+      {
+        "name": "timeout",
+        "description": "Timeout in milliseconds"
+      },
+      {
+        "name": "collect",
+        "description": "Run garbage collection"
+      },
+      {
+        "name": "kill",
+        "description": "Kill processes if they don't exit"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "writeAsciiFile",
+    "signature": "writeAsciiFile fileName data",
+    "description": "Writes data to an ASCII text file.",
+    "source_file": "file2.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      },
+      {
+        "name": "data",
+        "description": "Text to write"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "writeFile",
+    "signature": "writeFile fileName data",
+    "description": "Writes data to a binary file (overwrites existing content).",
+    "source_file": "file1.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      },
+      {
+        "name": "data",
+        "description": "Data to write"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "writeUnicodeBinaryFile",
+    "signature": "writeUnicodeBinaryFile fileName data",
+    "description": "Writes to a Unicode binary file.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      },
+      {
+        "name": "data",
+        "description": "Data to write"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "writeUnicodeFile",
+    "signature": "writeUnicodeFile fileName data",
+    "description": "Writes data to a Unicode file.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      },
+      {
+        "name": "data",
+        "description": "Data to write"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  },
+  {
+    "name": "writeUtf8File",
+    "signature": "writeUtf8File fileName data",
+    "description": "Writes to a UTF-8 file.",
+    "source_file": "file2u.eagle",
+    "args": [
+      {
+        "name": "fileName",
+        "description": "Path to file"
+      },
+      {
+        "name": "data",
+        "description": "Data to write"
+      }
+    ],
+    "returns": "Empty string",
+    "example": ""
+  }
+]
