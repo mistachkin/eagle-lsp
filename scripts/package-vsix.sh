@@ -77,30 +77,77 @@ for icon in "$VSCODE_DIR"/eagle-*.png; do
   fi
 done
 
-# ---- Generate patched extension.js ----
-# Replace the relative server path with the bundled server path.
-echo "==> Generating patched extension.js"
-sed "s|path\.join(__dirname, '\.\.', '\.\.', 'server\.js')|path.join(__dirname, 'server', 'server.js')|g" \
-  "$VSCODE_DIR/extension.js" > "$BUILD_DIR/extension.js"
+# ---- Install source dependencies for bundling ----
+# These node_modules directories are needed only so esbuild can resolve imports.
+# They are cleaned up after bundling (see below) and are NOT included in the VSIX.
+echo "==> Installing source dependencies"
+REPO_NODE_MODULES_CREATED=false
+VSCODE_NODE_MODULES_CREATED=false
+if [ ! -d "$REPO_ROOT/node_modules" ]; then
+  REPO_NODE_MODULES_CREATED=true
+fi
+if [ ! -d "$VSCODE_DIR/node_modules" ]; then
+  VSCODE_NODE_MODULES_CREATED=true
+fi
+(cd "$REPO_ROOT" && npm install --ignore-scripts 2>/dev/null)
+(cd "$VSCODE_DIR" && npm install --ignore-scripts 2>/dev/null)
 
-# ---- Copy server files ----
-echo "==> Copying server files"
-cp "$REPO_ROOT/server.js"       "$BUILD_DIR/server/"
-cp "$REPO_ROOT/eagle-parser.js" "$BUILD_DIR/server/"
-cp "$REPO_ROOT/eagle-data.js"   "$BUILD_DIR/server/"
+# ---- Bundle extension client with esbuild ----
+# Patches the server path and bundles vscode-languageclient into a single file.
+# The "vscode" module is external (provided by VS Code at runtime).
+echo "==> Bundling extension client (esbuild)"
+PATCHED_EXT="$VSCODE_DIR/_extension_patched.js"
+sed "s|path\.join(__dirname, '\.\.', '\.\.', 'server\.js')|path.join(__dirname, 'server', 'server.js')|g" \
+  "$VSCODE_DIR/extension.js" > "$PATCHED_EXT"
+npx --yes esbuild "$PATCHED_EXT" \
+  --bundle \
+  --platform=node \
+  --target=node18 \
+  --format=cjs \
+  --external:vscode \
+  --outfile="$BUILD_DIR/extension.js"
+rm -f "$PATCHED_EXT"
+
+# ---- Bundle language server with esbuild ----
+# Bundles server.js, eagle-parser.js, and eagle-data.js into a single file.
+# The JSON data files are loaded at runtime via fs.readFileSync, so they must
+# be copied alongside the bundle (see below).
+echo "==> Bundling language server (esbuild)"
+npx --yes esbuild "$REPO_ROOT/server.js" \
+  --bundle \
+  --platform=node \
+  --target=node18 \
+  --format=cjs \
+  --outfile="$BUILD_DIR/server/server.js"
+
+# ---- Copy runtime data files ----
+# eagle-data.js loads these via fs.readFileSync(path.join(__dirname, 'data', ...))
+# so they must exist relative to the bundled server.js.
+echo "==> Copying runtime data files"
 cp "$REPO_ROOT/data/eagle_commands.json"   "$BUILD_DIR/server/data/"
 cp "$REPO_ROOT/data/eagle_procedures.json" "$BUILD_DIR/server/data/"
 
+# ---- Clean up build-time node_modules ----
+# Only remove node_modules that the script created; leave pre-existing ones alone.
+if [ "$REPO_NODE_MODULES_CREATED" = true ] && [ -d "$REPO_ROOT/node_modules" ]; then
+  echo "==> Cleaning up $REPO_ROOT/node_modules (created by this script)"
+  rm -rf "$REPO_ROOT/node_modules"
+fi
+if [ "$VSCODE_NODE_MODULES_CREATED" = true ] && [ -d "$VSCODE_DIR/node_modules" ]; then
+  echo "==> Cleaning up $VSCODE_DIR/node_modules (created by this script)"
+  rm -rf "$VSCODE_DIR/node_modules"
+fi
+
 # ---- Generate merged package.json ----
-# Combine extension metadata with both client and server dependencies.
+# Extension metadata with no runtime dependencies (everything is bundled).
 echo "==> Generating merged package.json"
 node -e "
 const ext = require('$VSCODE_DIR/package.json');
-const srv = require('$REPO_ROOT/package.json');
 
-// Merge dependencies: client deps + server deps
+// Start from extension manifest, but clear dependencies since everything
+// is bundled by esbuild.
 const merged = Object.assign({}, ext, {
-  dependencies: Object.assign({}, ext.dependencies || {}, srv.dependencies || {})
+  dependencies: {}
 });
 
 // Remove scripts that reference the source tree
@@ -134,10 +181,6 @@ done
 if [ -f "$VSCODE_DIR/.vscodeignore" ]; then
   cp "$VSCODE_DIR/.vscodeignore" "$BUILD_DIR/"
 fi
-
-# ---- Install production dependencies ----
-echo "==> Installing production dependencies"
-(cd "$BUILD_DIR" && npm install --production)
 
 # ---- Package VSIX ----
 echo "==> Packaging VSIX"

@@ -1,0 +1,21 @@
+# Development and build artifacts
+.vscode/**
+.vscode-test/**
+.gitignore
+.eslintrc*
+.prettierrc*
+tsconfig.json
+node_modules/**
+
+# TypeScript sources (keep .d.ts for type resolution)
+**/*.ts
+!**/*.d.ts
+
+# Test files
+**/*.test.js
+**/*.spec.js
+**/test/**
+**/tests/**
+
+# Source maps
+**/*.map

@@ -53,7 +53,7 @@ npm install
 Or install the VSIX (if packaged):
 ```bash
 npx vsce package
-code --install-extension eagle-scripting-language-1.0.0.vsix
+code --install-extension eagle-scripting-language-1.0.1.vsix
 ```
 
 ### Neovim (via nvim-lspconfig)

@@ -1,6 +1,7 @@
 /**
  * VS Code extension entry point for Eagle Scripting Language.
  */
+const fs = require('fs');
 const path = require('path');
 const vscode = require('vscode');
 const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
@@ -19,23 +20,34 @@ let client;
  * - Linux:   /usr/lib/eagle/bin
  */
 function getDefaultBinaryDir() {
+  let candidate;
+
   switch (process.platform) {
     case 'win32': {
       const programFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
-      return path.join(programFiles, 'Eagle', 'bin');
+      candidate = path.join(programFiles, 'Eagle', 'bin');
+      break;
     }
     case 'darwin': {
       // Apple Silicon uses /opt/homebrew; Intel uses /usr/local.
       const homebrewPrefix = process.arch === 'arm64'
         ? '/opt/homebrew'
         : '/usr/local';
-      return path.join(homebrewPrefix, 'opt', 'eagle', 'libexec', 'bin');
+      candidate = path.join(homebrewPrefix, 'opt', 'eagle', 'libexec', 'bin');
+      break;
     }
     case 'linux':
-      return '/usr/lib/eagle/bin';
+      candidate = '/usr/lib/eagle/bin';
+      break;
     default:
       return '';
   }
+
+  // Only return the default if EagleShell.dll actually exists there.
+  if (fs.existsSync(path.join(candidate, 'EagleShell.dll'))) {
+    return candidate;
+  }
+  return '';
 }
 
 function activate(context) {
@@ -72,7 +84,8 @@ function activate(context) {
   // Register the Eagle Shell terminal command
   const openShellCmd = vscode.commands.registerCommand('eagle.openShell', () => {
     const shellConfig = vscode.workspace.getConfiguration('eagle');
-    const binaryDir = shellConfig.get('shell.binaryDir') || getDefaultBinaryDir();
+    const configuredDir = shellConfig.get('shell.binaryDir');
+    const binaryDir = configuredDir || getDefaultBinaryDir();
 
     if (!binaryDir) {
       vscode.window.showErrorMessage(
@@ -83,6 +96,21 @@ function activate(context) {
     }
 
     const shellDll = path.join(binaryDir, 'EagleShell.dll');
+
+    if (!fs.existsSync(shellDll)) {
+      if (configuredDir) {
+        vscode.window.showErrorMessage(
+          `EagleShell.dll not found in configured directory "${binaryDir}". ` +
+          'Please verify the "eagle.shell.binaryDir" setting.'
+        );
+      } else {
+        vscode.window.showErrorMessage(
+          `EagleShell.dll not found at "${shellDll}". ` +
+          'Please set "eagle.shell.binaryDir" in your settings to the directory containing EagleShell.dll.'
+        );
+      }
+      return;
+    }
 
     const terminal = vscode.window.createTerminal({
       name: 'Eagle Shell',

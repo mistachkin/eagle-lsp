@@ -4,11 +4,11 @@ import json, re, os
 from html.parser import HTMLParser
 
 # --- 1. Load base commands.json ---
-with open('/home/exedev/eagle-docs/commands.json') as f:
+with open('/path/to/eagle-docs/commands.json') as f:
     base_commands = json.load(f)
 
 # --- 2. Parse EAGLE_COMMAND_REFERENCE.md for descriptions/examples ---
-with open('/home/exedev/eagle-docs/EAGLE_COMMAND_REFERENCE.md') as f:
+with open('/path/to/eagle-docs/EAGLE_COMMAND_REFERENCE.md') as f:
     md_content = f.read()
 
 def extract_md_sections(content):
@@ -87,13 +87,13 @@ def extract_html_description(filepath):
         return ''
 
 html_descriptions = {}
-for fname in os.listdir('/home/exedev/eagle-docs/'):
+for fname in os.listdir('/path/to/eagle-docs/'):
     if fname.endswith('.html') and fname not in ('index.html', 'commands.html'):
         cmd_name = fname.replace('.html', '').replace('_handcrafted', '')
         # Skip numbered variants  
         if cmd_name[-1].isdigit() and cmd_name[:-1] in html_descriptions:
             continue
-        desc = extract_html_description(f'/home/exedev/eagle-docs/{fname}')
+        desc = extract_html_description(f'/path/to/eagle-docs/{fname}')
         if desc:
             html_descriptions[cmd_name] = desc
 
@@ -175,7 +175,7 @@ for cmd in base_commands:
     }
     commands.append(entry)
 
-with open('/home/exedev/eagle-lsp/data/eagle_commands.json', 'w') as f:
+with open('/path/to/eagle-lsp/data/eagle_commands.json', 'w') as f:
     json.dump(commands, f, indent=2)
 
 print(f'Extracted {len(commands)} commands')
@@ -210,7 +210,7 @@ for i in range(1, len(proc_blocks)-1, 2):
         'description': desc[:500]
     })
 
-with open('/home/exedev/eagle-lsp/data/eagle_procedures.json', 'w') as f:
+with open('/path/to/eagle-lsp/data/eagle_procedures.json', 'w') as f:
     json.dump(procedures, f, indent=2)
 
 print(f'Extracted {len(procedures)} procedures')

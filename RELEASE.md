@@ -46,17 +46,19 @@ bash scripts/package-vsix.sh
 This script:
 
 1. Creates a clean `build/` staging directory.
-2. Copies extension client files, server files, and documentation into `build/`.
-3. Generates a merged `package.json` with all dependencies.
-4. Patches `extension.js` to reference the bundled server at `./server/server.js`.
-5. Runs `npm install --production` to install dependencies.
-6. Runs `npx @vscode/vsce package` to produce the `.vsix` file.
-7. Copies the resulting `.vsix` back to the repository root.
+2. Copies extension client files (syntaxes, icons, language config) into `build/`.
+3. Installs source dependencies needed for bundling.
+4. Bundles `extension.js` with esbuild (inlines `vscode-languageclient`; `vscode` is external).
+5. Bundles `server.js` with esbuild (inlines `eagle-parser.js`, `eagle-data.js`, and server dependencies).
+6. Copies runtime data files (`data/*.json`) alongside the server bundle.
+7. Generates a `package.json` with no runtime dependencies (everything is bundled).
+8. Runs `npx @vscode/vsce package` to produce the `.vsix` file.
+9. Copies the resulting `.vsix` back to the repository root.
 
 On success you will see output like:
 
 ```
-VSIX created: eagle-scripting-language-1.0.0.vsix
+VSIX created: eagle-scripting-language-1.0.1.vsix
 ```
 
 ## Installing Locally
@@ -64,7 +66,7 @@ VSIX created: eagle-scripting-language-1.0.0.vsix
 Install the extension from the generated `.vsix` file:
 
 ```bash
-code --install-extension eagle-scripting-language-1.0.0.vsix
+code --install-extension eagle-scripting-language-1.0.1.vsix
 ```
 
 Then reload VS Code and open any `.eagle` or `.tcl` file to verify that
@@ -101,7 +103,7 @@ Before publishing a new version, update the version in
 re-run the packaging script:
 
 ```bash
-# Bump version (example: 1.0.0 -> 1.1.0)
+# Bump version (example: 1.0.0 -> 1.0.1)
 # Edit editors/vscode/package.json "version" field, then:
 bash scripts/package-vsix.sh
 cd build
@@ -112,8 +114,10 @@ npx @vscode/vsce publish
 
 ### "Cannot find module 'vscode-languageclient/node'"
 
-The `npm install --production` step in the build script failed or was skipped.
-Re-run `bash scripts/package-vsix.sh` and check for npm errors in the output.
+The esbuild bundling step failed, or the source dependencies were not installed.
+Re-run `bash scripts/package-vsix.sh` and check for esbuild or npm errors in
+the output. Ensure that `npm install` has been run in both the repository root
+and `editors/vscode/` directories.
 
 ### "Cannot find module './server/server.js'"
 
@@ -126,7 +130,7 @@ exist at the repository root.
 Inspect the VSIX contents:
 
 ```bash
-unzip -l eagle-scripting-language-1.0.0.vsix | grep server
+unzip -l eagle-scripting-language-1.0.1.vsix | grep server
 ```
 
 You should see entries like `extension/server/server.js`. If they are missing,

@@ -6,9 +6,9 @@ import re
 import os
 from html.parser import HTMLParser
 
-DOCS_DIR = "/home/exedev/eagle-docs"
+DOCS_DIR = "/path/to/eagle-docs"
 REPO_DIR = "/tmp/eagle-docs-repo"
-OUT_DIR = "/home/exedev/eagle-lsp/data"
+OUT_DIR = "/path/to/eagle-lsp/data"
 
 # ── HTML Parser ──────────────────────────────────────────────────────────────
 

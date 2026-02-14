@@ -2,7 +2,7 @@
   "name": "eagle-scripting-language",
   "displayName": "Eagle Scripting Language",
   "description": "Syntax highlighting for the Eagle scripting language (Tcl for the CLR)",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "MistachkinSystems",
   "repository": {
     "type": "git",
