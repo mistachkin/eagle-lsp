@@ -16,7 +16,8 @@
   "categories": ["Programming Languages"],
   "activationEvents": [
     "onLanguage:eagle",
-    "onLanguage:tcl"
+    "onLanguage:tcl",
+    "onCommand:eagle.openShell"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -54,6 +55,12 @@
         "path": "./syntaxes/eagle.tmLanguage.json"
       }
     ],
+    "commands": [
+      {
+        "command": "eagle.openShell",
+        "title": "Eagle: Open Shell"
+      }
+    ],
     "configuration": {
       "title": "Eagle Language Server",
       "properties": {
@@ -67,6 +74,11 @@
           "enum": ["off", "messages", "verbose"],
           "default": "off",
           "description": "Trace communication with the Eagle Language Server."
+        },
+        "eagle.shell.binaryDir": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the directory containing the Eagle Shell assembly (`EagleShell.dll`). If empty, a platform-specific default is used:\n- **Windows:** `%ProgramFiles%\\Eagle\\bin`\n- **macOS (Homebrew):** `/opt/homebrew/opt/eagle/libexec/bin`\n- **Linux (apt):** `/usr/lib/eagle/bin`"
         }
       }
     }
