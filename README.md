@@ -1,6 +1,6 @@
 # Eagle Language Server
 
-A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) (LSP) implementation for the **Eagle** scripting language (Extensible Adaptable Generalized Logic Engine — a Tcl implementation for the CLR).
+A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) (LSP) implementation for the **[Eagle](https://urn.to/r/eagle)** scripting language (Extensible Adaptable Generalized Logic Engine — a Tcl implementation for the CLR).
 
 ## Features
 
