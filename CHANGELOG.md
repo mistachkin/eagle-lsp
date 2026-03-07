@@ -6,6 +6,15 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-03-06
+
+### Added
+
+- `dict` command with all 20 sub-commands (append, create, exists, filter,
+  foreach, get, incr, info, keys, lappend, map, merge, remove, replace, set,
+  size, unset, update, values, with) — full documentation, completion,
+  hover, and signature help.
+
 ## [1.0.1] - 2026-02-14
 
 ### Added

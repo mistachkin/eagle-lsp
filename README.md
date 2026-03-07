@@ -6,7 +6,7 @@ A [Language Server Protocol](https://microsoft.github.io/language-server-protoco
 
 | Feature | Description |
 |---------|-------------|
-| **Completion** | Commands (120), subcommands, options, library procedures (135+), variables, user procs |
+| **Completion** | Commands (120+), subcommands, options, library procedures (135+), variables, user procs |
 | **Hover** | Full documentation with synopsis, description, options, examples |
 | **Signature Help** | Usage patterns shown as you type command arguments |
 | **Diagnostics** | Unmatched braces/brackets, unknown command hints |
@@ -53,7 +53,7 @@ npm install
 Or install the VSIX (if packaged):
 ```bash
 npx vsce package
-code --install-extension eagle-scripting-language-1.0.1.vsix
+code --install-extension eagle-scripting-language-1.0.2.vsix
 ```
 
 ### Neovim (via nvim-lspconfig)
@@ -128,7 +128,7 @@ eagle-lsp/
 ├── eagle-data.js          # Documentation data loader
 ├── eagle-parser.js        # Eagle/Tcl tokenizer and parser
 ├── data/
-│   ├── eagle_commands.json    # 120 built-in commands with full docs
+│   ├── eagle_commands.json    # 120+ built-in commands with full docs
 │   └── eagle_procedures.json  # 135+ library procedures
 ├── editors/
 │   └── vscode/            # VS Code extension

@@ -62,7 +62,7 @@ a:hover { text-decoration: underline; }
 <div class="grid">
   <div class="card">
     <h3><span class="icon">💡</span>Intelligent Completion</h3>
-    <p>Context-aware completions for 120 built-in commands, subcommands, options, 135+ library procedures, variables, and user-defined procs.</p>
+    <p>Context-aware completions for 120+ built-in commands, subcommands, options, 135+ library procedures, variables, and user-defined procs.</p>
     <span class="badge">Commands</span> <span class="badge">Subcommands</span> <span class="badge">Options</span> <span class="badge">Variables</span>
   </div>
   <div class="card">
@@ -144,7 +144,7 @@ a:hover { text-decoration: underline; }
 
 <div class="section">
   <h2>Supported Commands</h2>
-  <p style="color:#8b949e;margin-bottom:1rem;">All 120 Eagle built-in commands are documented with completions, hover, and signature help:</p>
+  <p style="color:#8b949e;margin-bottom:1rem;">All 120+ Eagle built-in commands are documented with completions, hover, and signature help:</p>
   <div class="cmd-list" id="cmd-list"></div>
 </div>
 
@@ -172,7 +172,7 @@ a:hover { text-decoration: underline; }
 <script>
 const commands = [
   'after','append','apply','array','base64','bgerror','break','callback','catch','cd',
-  'clock','close','concat','continue','debug','do','downlevel','encoding','eof','error',
+  'clock','close','concat','continue','debug','dict','do','downlevel','encoding','eof','error',
   'eval','exec','exit','expr','fblocked','fconfigure','fcopy','file','flush','for',
   'foreach','format','fpclassify','getf','gets','glob','global','guid','hash','host',
   'if','incr','info','interp','invoke','join','kill','lappend','lassign','lget',
@@ -188,7 +188,7 @@ const commands = [
 document.getElementById('cmd-list').innerHTML = commands.map(c => `<span><code>${c}</code></span>`).join(' ');
 
 document.getElementById('stats').innerHTML = `
-  <div class="stat"><div class="num">120</div><div class="label">Built-in Commands</div></div>
+  <div class="stat"><div class="num">120+</div><div class="label">Built-in Commands</div></div>
   <div class="stat"><div class="num">135+</div><div class="label">Library Procedures</div></div>
   <div class="stat"><div class="num">10</div><div class="label">LSP Features</div></div>
   <div class="stat"><div class="num">5+</div><div class="label">Editors Supported</div></div>
