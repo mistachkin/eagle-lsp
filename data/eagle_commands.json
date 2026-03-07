@@ -369,6 +369,36 @@
     "examples": ""
   },
   {
+    "name": "dict",
+    "group": "list",
+    "synopsis": "dict append dictionaryVariable key ?string ...?\ndict create ?key value ...?\ndict exists dictionaryValue key ?key ...?\ndict filter dictionaryValue filterType ...\ndict foreach {keyVar valueVar} dictionaryValue body\ndict get dictionaryValue ?key ...?\ndict incr dictionaryVariable key ?increment?\ndict info dictionaryValue\ndict keys dictionaryValue ?pattern?\ndict lappend dictionaryVariable key ?value ...?\ndict map {keyVar valueVar} dictionaryValue body\ndict merge ?dictionaryValue ...?\ndict remove dictionaryValue ?key ...?\ndict replace dictionaryValue ?key value ...?\ndict set dictionaryVariable key ?key ...? value\ndict size dictionaryValue\ndict unset dictionaryVariable key ?key ...?\ndict update dictionaryVariable key varName ?key varName ...? body\ndict values dictionaryValue ?pattern?\ndict with dictionaryVariable ?key ...? body",
+    "description": "Perform operations on dictionary values and variables. Dictionaries are lists with an even number of elements, where alternating elements are keys and values. Supports nested key traversal.",
+    "subcommands": [
+      "append",
+      "create",
+      "exists",
+      "filter",
+      "foreach",
+      "get",
+      "incr",
+      "info",
+      "keys",
+      "lappend",
+      "map",
+      "merge",
+      "remove",
+      "replace",
+      "set",
+      "size",
+      "unset",
+      "update",
+      "values",
+      "with"
+    ],
+    "options": [],
+    "examples": "# Create a dictionary\nset d [dict create name Alice age 30 city Boston]\n\n# Get a value\ndict get $d name  ;# Returns: Alice\n\n# Check key existence\ndict exists $d age  ;# Returns: 1\n\n# Set a value in-place\ndict set d country USA\n\n# Get all keys\ndict keys $d  ;# Returns: {name age city country}\n\n# Increment a value\ndict incr d age\n\n# Iterate over key-value pairs\ndict foreach {k v} $d {\n  puts \"$k = $v\"\n}\n\n# Filter by key pattern\ndict filter $d key a*  ;# Keys starting with 'a'\n\n# Map: transform values\ndict map {k v} {a 1 b 2 c 3} {\n  expr {$v * 2}\n}  ;# Returns: {a 2 b 4 c 6}\n\n# Merge dictionaries (later wins)\ndict merge {a 1 b 2} {b 3 c 4}  ;# Returns: {a 1 b 3 c 4}\n\n# Remove keys (returns new dictionary)\ndict remove {a b c d e f} c  ;# Returns: {a b e f}\n\n# Update: map keys to local variables, modify, write back\nset d [dict create x 1 y 2]\ndict update d x a y b {\n  set a [expr {$a + 10}]\n}\ndict get $d x  ;# Returns: 11\n\n# With: unpack keys into local variables\nset d [dict create a 1 b 2]\ndict with d {\n  set a [expr {$a + 10}]\n  set b [expr {$b + 20}]\n}\n;# a=11, b=22"
+  },
+  {
     "name": "do",
     "group": "loop",
     "synopsis": "do script clause test",
