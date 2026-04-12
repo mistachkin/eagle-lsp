@@ -147,6 +147,86 @@ function validateDocument(doc) {
   connection.sendDiagnostics({ uri: doc.uri, diagnostics });
 }
 
+// --- Option Completion Helpers ---
+
+/**
+ * Extract the subcommand name from the completion context by examining
+ * the tokens. For ensemble commands like "interp create -safe", the
+ * subcommand is the first argument (tokens[1]).
+ */
+function getSubcommandFromContext(ctx) {
+  if (!ctx.tokens || ctx.tokens.length < 2) return null;
+  const firstArg = ctx.tokens[1];
+  if (!firstArg || !firstArg.text) return null;
+  const text = firstArg.text;
+  // Subcommands don't start with - or $ or { or [
+  if (text.startsWith('-') || text.startsWith('$') ||
+      text.startsWith('{') || text.startsWith('[')) return null;
+  // Check if this command actually has this subcommand
+  const subs = data.subcommandMap.get(ctx.commandName);
+  if (subs && subs.includes(text)) return text;
+  // Also check command option metadata keys directly
+  if (data.commandOptions[`${ctx.commandName}.${text}`]) return text;
+  return null;
+}
+
+/**
+ * Format the value kind for display in the completion detail.
+ */
+function formatValueKind(valueKind, enumType) {
+  if (!valueKind || valueKind === 'none') return null;
+  switch (valueKind) {
+    case 'enum':
+      if (enumType) {
+        const shortName = enumType.split('.').pop();
+        return shortName;
+      }
+      return 'enum';
+    case 'boolean': return 'boolean';
+    case 'integer': return 'integer';
+    case 'wideInteger': return 'wide integer';
+    case 'unsignedWideInteger': return 'unsigned wide integer';
+    case 'narrowInteger': return 'narrow integer';
+    case 'string': return 'string';
+    case 'encoding': return 'encoding';
+    case 'type': return '.NET type';
+    case 'typeList': return 'type list';
+    case 'dateTime': return 'datetime';
+    case 'matchMode': return 'match mode';
+    case 'returnCode': return 'return code';
+    case 'returnCodeList': return 'return code list';
+    case 'ruleSet': return 'rule set';
+    case 'object': return 'object handle';
+    case 'interpreter': return 'interpreter path';
+    case 'list': return 'list';
+    case 'dictionary': return 'dictionary';
+    case 'byteArray': return 'byte array';
+    case 'cultureInfo': return 'culture';
+    case 'version': return 'version';
+    case 'absoluteNamespace': return 'namespace';
+    default: return valueKind;
+  }
+}
+
+/**
+ * Build a documentation string for an option.
+ */
+function buildOptionDoc(opt) {
+  const parts = [];
+  if (opt.valueKind && opt.valueKind !== 'none') {
+    if (opt.enumType) {
+      parts.push(`Value: ${opt.enumType}`);
+    } else {
+      parts.push(`Value: ${opt.valueKind}`);
+    }
+  } else {
+    parts.push('Switch (no value)');
+  }
+  if (opt.unsafe) parts.push('Unsafe (hidden in safe interpreters)');
+  if (opt.group !== undefined) parts.push(`Mutual-exclusion group ${opt.group}`);
+  return parts.join('\n');
+}
+
 // --- Completion ---
 connection.onCompletion((params) => {
   const doc = documents.get(params.textDocument.uri);
@@ -288,16 +368,57 @@ connection.onCompletion((params) => {
 
   // Option completion (after -)
   if (ctx.prefix.startsWith('-') && ctx.commandName) {
-    const cmd = data.commands.get(ctx.commandName);
-    if (cmd && cmd.options) {
-      const prefix = ctx.prefix.toLowerCase();
-      for (const opt of cmd.options) {
-        if (opt.toLowerCase().startsWith(prefix)) {
-          items.push({
-            label: opt,
-            kind: CompletionItemKind.Property,
-            detail: `${ctx.commandName} option`,
-          });
+    const prefix = ctx.prefix.toLowerCase();
+    let optionsUsed = false;
+
+    //
+    // Try subcommand-specific options from command option metadata first.
+    // Look up by "command.subcommand" key, falling back to "command" for
+    // top-level commands.
+    //
+    const subCmd = getSubcommandFromContext(ctx);
+    const optKeys = [];
+    if (subCmd) optKeys.push(`${ctx.commandName}.${subCmd}`);
+    optKeys.push(ctx.commandName);
+
+    for (const optKey of optKeys) {
+      const optMeta = data.commandOptions[optKey];
+      if (optMeta && optMeta.length > 0) {
+        for (const opt of optMeta) {
+          if (opt.unsupported) continue;
+          if (opt.name.toLowerCase().startsWith(prefix)) {
+            const valueDesc = formatValueKind(opt.valueKind, opt.enumType);
+            items.push({
+              label: opt.name,
+              kind: CompletionItemKind.Property,
+              detail: valueDesc
+                ? `${ctx.commandName} option (${valueDesc})`
+                : `${ctx.commandName} option`,
+              documentation: buildOptionDoc(opt),
+              sortText: (opt.unsafe ? '2' : '1') + opt.name,
+            });
+          }
+        }
+        optionsUsed = true;
+        break;
+      }
+    }
+
+    //
+    // Fall back to the flat option list from eagle_commands.json
+    // if no command option metadata is available.
+    //
+    if (!optionsUsed) {
+      const cmd = data.commands.get(ctx.commandName);
+      if (cmd && cmd.options) {
+        for (const opt of cmd.options) {
+          if (opt.toLowerCase().startsWith(prefix)) {
+            items.push({
+              label: opt,
+              kind: CompletionItemKind.Property,
+              detail: `${ctx.commandName} option`,
+            });
+          }
         }
       }
     }
