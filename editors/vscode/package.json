@@ -25,7 +25,7 @@
       {
         "id": "eagle",
         "aliases": ["Eagle"],
-        "extensions": [".eagle", ".eeagle", ".ruleSet"],
+        "extensions": [".eagle", ".eeagle", ".ruleSet", ".th8"],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./eagle-32.png",

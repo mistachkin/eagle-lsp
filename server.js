@@ -1,8 +1,40 @@
 #!/usr/bin/env node
 /**
  * Eagle Language Server - LSP implementation for the Eagle scripting language.
- * Supports: completion, hover, signature help, diagnostics, document symbols,
- *           go-to-definition, folding ranges, formatting hints.
+ *
+ * This module implements the language-server side of the Microsoft Language
+ * Server Protocol (LSP) for Eagle, the .NET-based Tcl-compatible scripting
+ * engine.  It is designed to be launched as a child process by any LSP-aware
+ * editor (VS Code, Neovim, Sublime, Emacs, etc.) and to speak JSON-RPC over
+ * stdio via the `vscode-languageserver/node` connection.
+ *
+ * Provided LSP features:
+ *
+ *   - `textDocument/didOpen|didChange|didClose` document lifecycle tracking.
+ *   - `textDocument/publishDiagnostics` with real-time validation: balanced
+ *     braces/brackets and a hint-level "unknown command" check that ignores
+ *     variable substitutions, bracketed sub-commands, namespaced names, and
+ *     procs defined later in the same file.
+ *   - `textDocument/completion` plus `completionItem/resolve`, supporting
+ *     command, procedure, subcommand, option (with subcommand-specific option
+ *     metadata), `string is` class, `expr` math function/operator, and
+ *     variable (`$name`) completion.
+ *   - `textDocument/hover` for commands, library procedures, user-defined
+ *     procs, and variables, rendered as Markdown.
+ *   - `textDocument/signatureHelp` driven by command usage strings or the
+ *     synopsis lines from the data set.
+ *   - `textDocument/documentSymbol` listing procedures, `namespace eval`
+ *     blocks, `package provide` declarations, and top-level variables.
+ *   - `textDocument/definition` for jumping to user-defined procs and
+ *     variable definitions within the open document.
+ *   - `textDocument/references` performing a simple textual scan.
+ *   - `textDocument/foldingRange` for brace-delimited blocks and runs of
+ *     consecutive comment lines.
+ *
+ * Static command/procedure metadata is provided by `./eagle-data` (which
+ * loads JSON tables generated from the Eagle source tree), and syntactic
+ * analysis of the open document is delegated to `./eagle-parser`.  The
+ * server itself is stateless apart from a `documents` map keyed by URI.
  */
 'use strict';
 
@@ -20,6 +52,33 @@ const connection = createConnection(ProposedFeatures.all);
 const documents = new Map(); // uri -> TextDocument
 let data; // loaded eagle data
 
+/**
+ * Handle the LSP `initialize` request.
+ *
+ * This is the first request the editor sends to the server; it negotiates
+ * which protocol features the server supports and performs any one-time
+ * setup that must happen before documents start flowing.  Here it lazily
+ * loads the bundled Eagle data set (the commands, procedures, options,
+ * subcommands, math functions, etc. extracted from the Eagle source tree)
+ * via `eagleData.load()`, logs a one-line summary to the client console,
+ * and then returns the server's `capabilities` object.
+ *
+ * The advertised capabilities tell the client to send the FULL document
+ * text on every change (no incremental diffs), to ask the server for
+ * completions when the user types `$`, space, `-`, or `:` (those being the
+ * meaningful prefix characters in Eagle/Tcl: variable sigil, argument
+ * separator, option leader, and namespace separator), and to enable hover,
+ * signature help, document symbols, go-to-definition, references, and
+ * folding range providers.  `resolveProvider` is set so that lightweight
+ * completion items can be enriched on demand via `completionItem/resolve`.
+ *
+ * @param {object} params - Standard LSP `InitializeParams` from the client.
+ *   Unused here, but the client supplies its capabilities, workspace
+ *   folders, root URI, and other negotiation data.
+ * @returns {object} An LSP `InitializeResult` describing the server's
+ *   capabilities and including a `serverInfo` block with the human-readable
+ *   name and version of this server.
+ */
 connection.onInitialize((params) => {
   data = eagleData.load();
   connection.console.log(`Eagle LSP: loaded ${data.commands.size} commands, ${data.procedures.size} procedures`);
@@ -48,17 +107,68 @@ connection.onInitialize((params) => {
   };
 });
 
+/**
+ * Handle the LSP `initialized` notification.
+ *
+ * The client sends this exactly once, after it has received and processed
+ * the response to `initialize`, signalling that two-way communication is
+ * now fully established and that dynamic feature registrations (or
+ * `workspace/configuration` round-trips) would be safe.  This server has
+ * no dynamic registrations to perform, so the handler simply logs a status
+ * line to the client's output channel as a heartbeat for debugging.
+ *
+ * @param {object} params - LSP `InitializedParams` (always empty).
+ * @returns {void} Notifications have no response.
+ */
 connection.onInitialized(() => {
   connection.console.log('Eagle Language Server initialized');
 });
 
 // --- Document Management ---
+/**
+ * Handle the LSP `textDocument/didOpen` notification.
+ *
+ * Fired by the client when the user opens (or the editor otherwise becomes
+ * aware of) an Eagle source file.  This handler constructs a fresh
+ * `TextDocument` from the snapshot the client sent, stores it in the
+ * per-server `documents` map keyed by URI, and immediately validates it so
+ * the user sees diagnostics on open without having to type first.
+ *
+ * The full text is always provided here (the protocol requires it for
+ * `didOpen`), so there is no need to consult any other source for the
+ * initial document contents.
+ *
+ * @param {object} params - LSP `DidOpenTextDocumentParams`.  Its
+ *   `textDocument` field carries `uri`, `languageId`, `version`, and the
+ *   complete `text` of the file.
+ * @returns {void}
+ */
 connection.onDidOpenTextDocument((params) => {
   const doc = TextDocument.create(params.textDocument.uri, params.textDocument.languageId, params.textDocument.version, params.textDocument.text);
   documents.set(params.textDocument.uri, doc);
   validateDocument(doc);
 });
 
+/**
+ * Handle the LSP `textDocument/didChange` notification.
+ *
+ * Fired whenever the user edits an open document.  Because the server
+ * advertises `TextDocumentSyncKind.Full`, each notification carries a
+ * single content change whose `text` is the entire new document body --
+ * but the same `TextDocument.update` API is used so the implementation
+ * would still be correct under incremental sync.
+ *
+ * If the document is not currently tracked (which can happen if a change
+ * notification arrives after `didClose`), the handler silently does
+ * nothing.  Otherwise it applies the change, stores the new immutable
+ * `TextDocument` snapshot back into the map, and re-runs `validateDocument`
+ * so diagnostics stay in sync with the latest contents.
+ *
+ * @param {object} params - LSP `DidChangeTextDocumentParams`, with the
+ *   target document's identifier (`uri`, `version`) and a `contentChanges`
+ *   array describing what changed.
+ * @returns {void}
+ */
 connection.onDidChangeTextDocument((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (doc) {
@@ -68,12 +178,67 @@ connection.onDidChangeTextDocument((params) => {
   }
 });
 
+/**
+ * Handle the LSP `textDocument/didClose` notification.
+ *
+ * Fired when the editor stops being interested in a document (typically
+ * because the user closed it, or because it was renamed/deleted on disk).
+ * The handler drops the cached `TextDocument` so it can be garbage
+ * collected, then publishes an empty diagnostics array for the URI to
+ * clear any lingering squiggles in the editor's "Problems" view.
+ *
+ * Clearing diagnostics explicitly is required by the protocol; the client
+ * will not clear them on its own when a file closes.
+ *
+ * @param {object} params - LSP `DidCloseTextDocumentParams` identifying
+ *   the document being released by `textDocument.uri`.
+ * @returns {void}
+ */
 connection.onDidCloseTextDocument((params) => {
   documents.delete(params.textDocument.uri);
   connection.sendDiagnostics({ uri: params.textDocument.uri, diagnostics: [] });
 });
 
 // --- Diagnostics ---
+/**
+ * Validate an Eagle document and publish the resulting diagnostics.
+ *
+ * This is the workhorse behind `textDocument/publishDiagnostics`.  It runs
+ * two independent passes over the open document and sends a single combined
+ * diagnostics array to the client.
+ *
+ * Pass one is a hand-rolled character scan that tracks the depth of curly
+ * braces and square brackets while honouring two pieces of Eagle/Tcl
+ * lexical context: backslash escapes (the next character is skipped) and
+ * double-quoted strings (brace/bracket counting is disabled inside them).
+ * It also treats a `#` as a comment only when it is the first non-space
+ * character on the line or immediately preceded by whitespace -- this is
+ * an approximation of Tcl's "comments are only recognized in command
+ * position" rule that is good enough for editor diagnostics.  A negative
+ * brace or bracket depth produces an Error-severity diagnostic for the
+ * offending closer and the depth is clamped back to zero so a single typo
+ * does not avalanche into a wall of cascading errors.
+ *
+ * Pass two delegates to `parser.parseDocument` to obtain a structured list
+ * of commands, then for each command word that looks like an actual
+ * identifier (skipping `$var`, `[bracket]`, `ns::scoped`, and `{braced}`
+ * forms) checks the loaded `data` set for a matching built-in command or
+ * library procedure.  If no match is found, the same document is scanned
+ * for user-defined `proc` declarations via `parser.findProcedures` so that
+ * forward references and procs defined later in the file are not flagged.
+ * Anything that survives all of those filters is reported as a Hint-level
+ * diagnostic, which most editors render unobtrusively.
+ *
+ * Tricky details: the diagnostic ranges use the command/closer's exact
+ * column so the squiggle lands precisely; the function always calls
+ * `connection.sendDiagnostics`, even when the array is empty, so that a
+ * fix in the document clears stale diagnostics for that URI.
+ *
+ * @param {TextDocument} doc - The document snapshot to validate; must
+ *   expose `getText()` and `uri`.
+ * @returns {void} Diagnostics are delivered to the client via the LSP
+ *   connection rather than returned to the caller.
+ */
 function validateDocument(doc) {
   const text = doc.getText();
   const diagnostics = [];
@@ -150,9 +315,33 @@ function validateDocument(doc) {
 // --- Option Completion Helpers ---
 
 /**
- * Extract the subcommand name from the completion context by examining
- * the tokens. For ensemble commands like "interp create -safe", the
- * subcommand is the first argument (tokens[1]).
+ * Extract the subcommand name from a completion context.
+ *
+ * Many Eagle commands behave as "ensembles": the first positional
+ * argument selects a sub-command that has its own option set (for example,
+ * `interp create -safe`, `string is integer`, or `dict get`).  When the
+ * user types an option on such a command, the completion provider needs
+ * to know not just the outer command but also which sub-command they are
+ * working under so it can offer the right option metadata.
+ *
+ * This helper inspects the token list captured by
+ * `parser.getCommandContext` and returns that sub-command word, or `null`
+ * if the cursor is not actually inside an ensemble invocation.  It rejects
+ * candidates that begin with `-`, `$`, `{`, or `[` because those denote an
+ * option, a variable substitution, a braced word, or a bracketed command
+ * substitution respectively -- none of which can be a sub-command name.
+ *
+ * To avoid false positives on commands that merely happen to take a bare
+ * word first, the candidate is cross-checked against two sources before
+ * being accepted: the per-command sub-command list in `data.subcommandMap`
+ * and the keys of `data.commandOptions` formatted as `command.subcommand`.
+ * Either match counts as confirmation.
+ *
+ * @param {object} ctx - A command context object as returned by
+ *   `parser.getCommandContext`.  Only `ctx.tokens` (array of lexer tokens
+ *   for the command) and `ctx.commandName` are consulted.
+ * @returns {?string} The validated sub-command name, or `null` if the
+ *   context does not contain a recognized sub-command.
  */
 function getSubcommandFromContext(ctx) {
   if (!ctx.tokens || ctx.tokens.length < 2) return null;
@@ -171,7 +360,32 @@ function getSubcommandFromContext(ctx) {
 }
 
 /**
- * Format the value kind for display in the completion detail.
+ * Translate an option's value-kind code into a human-readable label.
+ *
+ * Eagle's option metadata records the expected value type for each option
+ * (for example, `wideInteger`, `cultureInfo`, `matchMode`, `ruleSet`) using
+ * the same identifiers the engine uses internally.  Those identifiers are
+ * useful programmatically but not always pleasant to read in an editor
+ * tooltip, so this helper maps each known code to a friendlier phrase
+ * shown in the completion item's `detail` field (e.g. "wide integer",
+ * "culture", "match mode").
+ *
+ * Two codes get special handling.  The literal string `none` (and any
+ * falsy input) returns `null`, which the caller interprets as "this is a
+ * switch with no value, do not show a type hint at all".  The code `enum`
+ * is rendered using the short (final) segment of the supplied .NET enum
+ * type name, so `Eagle._Components.Public.MatchMode` becomes simply
+ * `MatchMode`; if `enumType` is not provided the generic word `enum` is
+ * shown instead.  Unknown codes fall through to the `default` branch and
+ * are returned verbatim so new value kinds added to the data set remain
+ * visible even before this switch is updated.
+ *
+ * @param {?string} valueKind - The option's `valueKind` from the data
+ *   set, or `null`/`undefined`/the string `'none'` for switch-only options.
+ * @param {?string} [enumType] - For `enum`-kind options, the fully
+ *   qualified .NET enum type name; only the final dotted segment is used.
+ * @returns {?string} A display string for the value kind, or `null` if
+ *   the option carries no value.
  */
 function formatValueKind(valueKind, enumType) {
   if (!valueKind || valueKind === 'none') return null;
@@ -209,7 +423,26 @@ function formatValueKind(valueKind, enumType) {
 }
 
 /**
- * Build a documentation string for an option.
+ * Build a short documentation string describing a single command option.
+ *
+ * Used as the `documentation` field of completion items for option flags.
+ * The result is a plain-text string (not Markdown) composed of one piece
+ * of information per line so that editors which render the documentation
+ * verbatim still produce a readable tooltip.
+ *
+ * The first line always describes the option's value: either the rich
+ * .NET enum type name when present, the raw `valueKind` otherwise, or the
+ * literal `Switch (no value)` for boolean switches.  Two optional lines
+ * may follow: `Unsafe (hidden in safe interpreters)` for options that the
+ * engine hides in safe interpreters, and `Mutual-exclusion group N` for
+ * options that belong to a numbered group from which only one member may
+ * be supplied at a time.
+ *
+ * @param {object} opt - One option-metadata entry from
+ *   `data.commandOptions[...]`.  Recognized fields: `valueKind`,
+ *   `enumType`, `unsafe`, and `group`.
+ * @returns {string} A newline-joined documentation string.  Always
+ *   contains at least one line.
  */
 function buildOptionDoc(opt) {
   const parts = [];
@@ -228,6 +461,55 @@ function buildOptionDoc(opt) {
 }
 
 // --- Completion ---
+/**
+ * Handle the LSP `textDocument/completion` request.
+ *
+ * This is the single largest handler in the server and the one users
+ * interact with most.  It analyses the line and cursor position the
+ * client supplied and returns an array of `CompletionItem`s appropriate
+ * to where the cursor is in the Eagle source.  Items are returned plain
+ * (no resolved documentation); rich Markdown for command items is filled
+ * in lazily by `onCompletionResolve` when the user actually highlights an
+ * entry.
+ *
+ * The handler runs the cursor through several context buckets, in order,
+ * and returns as soon as one of them produces an answer.  This keeps the
+ * suggestion list focused and avoids mixing unrelated kinds of items:
+ *
+ *   1. Variable substitution: if the text immediately preceding the
+ *      cursor matches `$[a-zA-Z0-9_:]*`, only variables (and procs
+ *      treated as callables) collected by `parser.findVariables` are
+ *      offered.
+ *   2. Command position: when the parser reports the cursor is at the
+ *      start of a command, built-in commands, user-defined procs (from
+ *      this document), and library procedures are offered, grouped by
+ *      sortText prefix (`0`, `1`, `2` respectively) so the editor shows
+ *      built-ins first.
+ *   3. Sub-command position: when the cursor is the first argument of an
+ *      ensemble command and that command has a known sub-command list,
+ *      its sub-commands are offered as `EnumMember` items.
+ *   4. The special case `string is <class>`: scans the partial command to
+ *      detect `string is` followed by a class slot and offers the values
+ *      from `data.stringIsClasses`.
+ *   5. The `expr` command: when typing inside an `expr` invocation, math
+ *      functions (`sin`, `tan`, ...) are offered with an inserted opening
+ *      parenthesis, followed by `expr` operators as `Operator` items.
+ *   6. Option completion: when the partial word starts with `-`, the
+ *      handler first tries subcommand-specific option metadata (via
+ *      `getSubcommandFromContext`), falling back to top-level metadata
+ *      and finally to the flat option list in `eagle_commands.json`.
+ *      Unsupported options are filtered out; unsafe options sort after
+ *      safe ones.
+ *   7. Fallback: if none of the above produced any items but a command
+ *      context exists, the set of in-scope variables is offered with a
+ *      leading `$` so the user can quickly substitute a value.
+ *
+ * @param {object} params - LSP `CompletionParams`, providing the document
+ *   identifier and the cursor `position` (line + character).
+ * @returns {object[]} An array of `CompletionItem`s.  Empty when the
+ *   document is not tracked, or when no context-specific suggestions
+ *   apply and no in-scope variables exist.
+ */
 connection.onCompletion((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
@@ -440,6 +722,30 @@ connection.onCompletion((params) => {
   return items;
 });
 
+/**
+ * Handle the LSP `completionItem/resolve` request.
+ *
+ * The completion handler returns lightweight items so the initial
+ * suggestion list is fast to compute and cheap to transmit, even when the
+ * user has typed only a single character.  When the editor needs to
+ * actually display documentation -- for example, when the user highlights
+ * an entry and the editor pops up a side panel -- it sends the chosen
+ * item back via this `resolve` request, and the server replies with the
+ * same item enriched with full Markdown documentation.
+ *
+ * This implementation only enriches items whose `kind` is `Function` and
+ * whose `label` matches a known built-in command.  It composes a Markdown
+ * payload made up of a fenced `tcl` synopsis block, the long description,
+ * and any `Examples:` block from the data set.  Items that came from user
+ * procs or library procs already carry enough data and are returned
+ * unchanged; the editor is free to call resolve on them anyway and simply
+ * gets the item back as-is.
+ *
+ * @param {object} item - The `CompletionItem` previously returned by the
+ *   completion handler.
+ * @returns {object} The same item, with `documentation` populated when
+ *   applicable.  The reference is mutated and returned.
+ */
 connection.onCompletionResolve((item) => {
   // Enrich completion item with full documentation
   if (item.kind === CompletionItemKind.Function && data.commands.has(item.label)) {
@@ -454,6 +760,36 @@ connection.onCompletionResolve((item) => {
 });
 
 // --- Hover ---
+/**
+ * Handle the LSP `textDocument/hover` request.
+ *
+ * Produces the tooltip the editor shows when the user hovers the mouse
+ * over (or otherwise queries) an identifier in an Eagle source file.
+ * The handler asks `parser.getWordAtPosition` for the word under the
+ * cursor and then probes three sources, in order of authority, returning
+ * the first match as a Markdown-formatted hover:
+ *
+ *   1. Built-in commands (`data.commands`): renders a `## name` heading,
+ *      the command group, a fenced `tcl` synopsis, the description,
+ *      comma-separated sub-command and option lists, and any examples.
+ *   2. Library procedures (`data.procedures`): renders a heading, the
+ *      stored signature in a fenced `tcl` block, and the description.
+ *   3. User-defined procedures from the open file (via
+ *      `parser.findProcedures`): renders the proc name, a synthetic
+ *      `proc name {args} {...}` block, and the source line.
+ *
+ * If the word begins with `$` it is treated as a variable reference.  The
+ * leading sigil and any namespace colons, plus any `{`/`}` from a `${...}`
+ * form, are stripped before looking the bare name up via
+ * `parser.findVariables`.  When a definition is found the tooltip notes
+ * which Eagle command introduced the variable (`set`, `variable`, `global`,
+ * `upvar`, `foreach`, ...) and on what line.
+ *
+ * @param {object} params - LSP `HoverParams` with the target document and
+ *   cursor position.
+ * @returns {?object} An LSP `Hover` object with a Markdown body, or
+ *   `null` when there is no word under the cursor and when nothing matches.
+ */
 connection.onHover((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
@@ -515,6 +851,36 @@ connection.onHover((params) => {
 });
 
 // --- Signature Help ---
+/**
+ * Handle the LSP `textDocument/signatureHelp` request.
+ *
+ * Provides the in-line "what arguments does this command take, and which
+ * one am I typing right now?" pop-up that editors display while the user
+ * is inside a command invocation.  The handler asks
+ * `parser.getCommandContext` for the command name and current argument
+ * index, then looks the command up in `data.commands` to obtain its
+ * documented call patterns.
+ *
+ * The candidate signature list is taken from `cmd.usages` when that
+ * curated array is present; otherwise the synopsis is split into one
+ * signature per non-empty line.  Each signature is wrapped in an LSP
+ * `SignatureInformation` object whose `documentation` is the command's
+ * long description (rendered as Markdown).  All discovered usages are
+ * returned together so the client can let the user cycle through
+ * overloads with the up/down keys, but the server marks the first one
+ * active by default.
+ *
+ * The `activeParameter` is derived from the argument index:
+ * `Math.max(0, ctx.argIndex - 1)` -- `argIndex` is 0 at the command word
+ * itself, so subtracting one gives the zero-based index of the parameter
+ * the user is actually typing, never going below zero.
+ *
+ * @param {object} params - LSP `SignatureHelpParams` with the document
+ *   and cursor position.
+ * @returns {?object} An LSP `SignatureHelp` object, or `null` if the
+ *   document is not tracked, the cursor is not inside a known command, or
+ *   the command has no documented signatures.
+ */
 connection.onSignatureHelp((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
@@ -550,6 +916,37 @@ connection.onSignatureHelp((params) => {
 });
 
 // --- Document Symbols ---
+/**
+ * Handle the LSP `textDocument/documentSymbol` request.
+ *
+ * Builds the outline/breadcrumb tree most editors show in their sidebar
+ * or "Go to symbol in file..." command palette.  The returned array is a
+ * flat list (not a hierarchy) of `DocumentSymbol`-shaped entries derived
+ * from three sources:
+ *
+ *   - Every user-defined procedure found by `parser.findProcedures`,
+ *     reported as a `SymbolKind.Function` with the parameter list shown
+ *     in the `detail` field.
+ *   - Every `namespace eval <name>` invocation, reported as a
+ *     `SymbolKind.Namespace`.  The handler tolerates malformed calls by
+ *     using the literal `'unknown'` when the namespace name is missing.
+ *   - Every `package provide <name>` invocation, reported as a
+ *     `SymbolKind.Package`, with the same tolerance for missing names.
+ *   - Every top-level variable definition collected by
+ *     `parser.findVariables` (skipping those flagged as procs, which were
+ *     already added above), reported as a `SymbolKind.Variable` with the
+ *     defining command (`set`, `variable`, `global`, ...) in `detail`.
+ *
+ * Range bookkeeping uses the line on which each symbol starts and an
+ * end-character of 1000 as a deliberately generous upper bound -- the
+ * exact column does not matter for outline display, only the line, and
+ * 1000 comfortably exceeds the longest reasonable source line.
+ *
+ * @param {object} params - LSP `DocumentSymbolParams` with the target
+ *   document identifier.
+ * @returns {object[]} An array of symbol entries.  Empty when the
+ *   document is not tracked.
+ */
 connection.onDocumentSymbol((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
@@ -635,6 +1032,31 @@ connection.onDocumentSymbol((params) => {
 });
 
 // --- Go to Definition ---
+/**
+ * Handle the LSP `textDocument/definition` request.
+ *
+ * Implements the editor's "Go to definition" command for Eagle source.
+ * The handler resolves the word under the cursor and searches the open
+ * document for either a matching user-defined procedure (via
+ * `parser.findProcedures`) or a matching variable definition (via
+ * `parser.findVariables`).  Whichever is found first is returned as an
+ * LSP `Location` pointing at the line where the symbol is introduced.
+ *
+ * Variable name normalization mirrors the hover handler: any leading `$`
+ * (followed by any number of namespace colons) is stripped, and the
+ * braces from a `${name}` form are removed so the look-up uses the plain
+ * variable name.
+ *
+ * Definitions in other files are not resolved -- only the current
+ * document is searched.  Built-in commands and library procedures are
+ * intentionally not navigable because their source lives outside the
+ * user's project.
+ *
+ * @param {object} params - LSP `DefinitionParams` with the target
+ *   document and cursor position.
+ * @returns {?object} An LSP `Location` for the definition site, or
+ *   `null` if no definition is found in the current document.
+ */
 connection.onDefinition((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
@@ -676,6 +1098,29 @@ connection.onDefinition((params) => {
 });
 
 // --- References ---
+/**
+ * Handle the LSP `textDocument/references` request.
+ *
+ * Implements the editor's "Find all references" command.  This is a
+ * deliberately simple textual implementation: the word under the cursor
+ * is taken, any leading `$` is stripped, and the remaining string is
+ * scanned for verbatim occurrences in every line of the open document.
+ * Each match is reported as an LSP `Location` covering exactly the run
+ * of characters where the substring appears.
+ *
+ * Because the search is purely lexical, it will find occurrences inside
+ * comments, strings, and partial words (for example, looking up `len`
+ * also matches inside `length`).  The trade-off is intentional: it makes
+ * the feature work without any cross-file index, and the editor's UI
+ * lets the user quickly filter the result list.
+ *
+ * @param {object} params - LSP `ReferenceParams` with the document and
+ *   cursor position.  The protocol also carries an `includeDeclaration`
+ *   flag, but this implementation always returns every occurrence.
+ * @returns {object[]} An array of `Location` objects, one per textual
+ *   match.  Empty when the document is not tracked or when no word lies
+ *   under the cursor.
+ */
 connection.onReferences((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
@@ -706,6 +1151,38 @@ connection.onReferences((params) => {
 });
 
 // --- Folding Ranges ---
+/**
+ * Handle the LSP `textDocument/foldingRange` request.
+ *
+ * Computes the set of foldable regions the editor offers via its
+ * gutter-arrow / outline-collapse UI.  Two kinds of regions are
+ * produced.
+ *
+ * Brace-delimited regions are detected by a single character scan that
+ * tracks brace depth using a stack of opening line numbers.  A backslash
+ * before any character makes the next character skipped, mirroring the
+ * Eagle/Tcl escape rule and preventing `\{` or `\}` from being treated as
+ * a real delimiter.  When a matching closer is found on a different line
+ * than its opener, a `FoldingRangeKind.Region` from the opener's line to
+ * the closer's line is added.  Same-line braces are not foldable.
+ *
+ * Comment regions are detected per line: whenever a line's first
+ * non-whitespace character is `#`, the scan looks ahead for additional
+ * consecutive `#`-starting lines and, if at least two are present, emits
+ * a `FoldingRangeKind.Comment` covering the block.  The outer loop index
+ * is then advanced past the block to avoid emitting overlapping ranges
+ * for the same comment.
+ *
+ * The two passes happen interleaved inside the same per-line loop;
+ * because the brace scan only acts on individual characters and the
+ * comment scan only acts on whole lines, they do not interfere with each
+ * other.
+ *
+ * @param {object} params - LSP `FoldingRangeParams` with the document
+ *   identifier.
+ * @returns {object[]} An array of `FoldingRange` entries.  Empty when
+ *   the document is not tracked or contains no foldable structures.
+ */
 connection.onFoldingRanges((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
