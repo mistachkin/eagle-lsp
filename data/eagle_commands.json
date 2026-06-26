@@ -1843,6 +1843,15 @@
     "examples": ""
   },
   {
+    "name": "scan",
+    "group": "string",
+    "synopsis": "scan string format ?varName varName ...?",
+    "description": "Parse a string using conversion specifiers (inverse of [format])",
+    "subcommands": [],
+    "options": [],
+    "examples": "# Parse two integers (returns the number of conversions)\nscan \"12 34\" \"%d %d\" a b   ;# => 2, a=12, b=34\n\n# Inline mode: omit the variables to get a list of parsed values\nscan \"12 34\" \"%d %d\"       ;# => 12 34\n\n# Hexadecimal and character-code conversions\nscan \"ff\" \"%x\" n           ;# n=255\nscan \"A\" \"%c\" code         ;# code=65\n\n# Fixed field widths and skipped fields (\"*\")\nscan \"20240115\" \"%4d%2d%2d\" y m d    ;# y=2024, m=1, d=15\nscan \"1 2 3\" \"%d %*d %d\" first last  ;# first=1, last=3\n\n# Character sets, including negated sets\nscan \"key=val\" {%[^=]=%s} k v        ;# k=key, v=val\n\n# XPG3 positional specifiers (inline)\nscan \"10 20 30\" {%3$d %1$d}          ;# => 20 {} 10"
+  },
+  {
     "name": "scope",
     "group": "variable",
     "synopsis": "scope close ?options? ?name?\nscope create ?options? ?name?\nscope current\nscope destroy name\nscope eval ?options? name arg ?arg ...?\nscope exists name\nscope global ?options? ?name?\nscope list ?pattern?\nscope lock ?options? name\nscope open ?options? ?name?",

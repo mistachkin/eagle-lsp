@@ -140,3 +140,9 @@ vite.config.ts.timestamp-*
 
 # Visual Studio package files
 *.vsix
+
+# Python (build-time extraction tooling: extract_docs.py, data/extract.py)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/

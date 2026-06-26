@@ -3,12 +3,35 @@
 import json, re, os
 from html.parser import HTMLParser
 
-# --- 1. Load base commands.json ---
-with open('/path/to/eagle-docs/commands.json') as f:
+# --- Source and output locations --------------------------------------------
+#
+# Default to the conventional sibling-checkout layout (the "docs" and "lsp"
+# repositories next to each other); override any of them with an environment
+# variable.  See PIPELINE.md for the full source-of-truth chain.
+#
+#   DOCS_REPO   the Eagle documentation repository (Markdown source) -- the
+#               sibling "docs" checkout; provides "core_language.md" and
+#               "core_script_library.md".
+#   DOCS_BUILD  the *generated* documentation tree: the structured command
+#               inventory "commands.json", the per-command "*.html" pages, and
+#               "EAGLE_COMMAND_REFERENCE.md" (a build artifact, not the Markdown
+#               source repo -- supply via EAGLE_DOCS_BUILD).
+#   OUT_DIR     this LSP repository's "data" directory (the generated JSON).
+#
+_LSP_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+DOCS_REPO = os.environ.get(
+    'EAGLE_DOCS', os.path.join(_LSP_ROOT, os.pardir, 'docs'))
+DOCS_BUILD = os.environ.get(
+    'EAGLE_DOCS_BUILD', os.path.join(DOCS_REPO, 'build', 'docs'))
+OUT_DIR = os.environ.get('EAGLE_LSP_DATA', os.path.join(_LSP_ROOT, 'data'))
+
+# --- 1. Load base commands.json (the structured command inventory) ---
+with open(os.path.join(DOCS_BUILD, 'commands.json')) as f:
     base_commands = json.load(f)
 
 # --- 2. Parse EAGLE_COMMAND_REFERENCE.md for descriptions/examples ---
-with open('/path/to/eagle-docs/EAGLE_COMMAND_REFERENCE.md') as f:
+with open(os.path.join(DOCS_BUILD, 'EAGLE_COMMAND_REFERENCE.md')) as f:
     md_content = f.read()
 
 def extract_md_sections(content):
@@ -246,18 +269,18 @@ def extract_html_description(filepath):
         return ''
 
 html_descriptions = {}
-for fname in os.listdir('/path/to/eagle-docs/'):
+for fname in os.listdir(DOCS_BUILD):
     if fname.endswith('.html') and fname not in ('index.html', 'commands.html'):
         cmd_name = fname.replace('.html', '').replace('_handcrafted', '')
-        # Skip numbered variants  
+        # Skip numbered variants
         if cmd_name[-1].isdigit() and cmd_name[:-1] in html_descriptions:
             continue
-        desc = extract_html_description(f'/path/to/eagle-docs/{fname}')
+        desc = extract_html_description(os.path.join(DOCS_BUILD, fname))
         if desc:
             html_descriptions[cmd_name] = desc
 
 # --- 4. Parse core_language.md for detailed command info ---
-with open('/tmp/eagle-docs-repo/core_language.md') as f:
+with open(os.path.join(DOCS_REPO, 'core_language.md')) as f:
     core_lang = f.read()
 
 def extract_core_lang_descriptions(content):
@@ -380,13 +403,13 @@ for cmd in base_commands:
     }
     commands.append(entry)
 
-with open('/path/to/eagle-lsp/data/eagle_commands.json', 'w') as f:
+with open(os.path.join(OUT_DIR, 'eagle_commands.json'), 'w') as f:
     json.dump(commands, f, indent=2)
 
 print(f'Extracted {len(commands)} commands')
 
 # --- 6. Extract procedures from core_script_library.md ---
-with open('/tmp/eagle-docs-repo/core_script_library.md') as f:
+with open(os.path.join(DOCS_REPO, 'core_script_library.md')) as f:
     lib_content = f.read()
 
 procedures = []
@@ -415,7 +438,7 @@ for i in range(1, len(proc_blocks)-1, 2):
         'description': desc[:500]
     })
 
-with open('/path/to/eagle-lsp/data/eagle_procedures.json', 'w') as f:
+with open(os.path.join(OUT_DIR, 'eagle_procedures.json'), 'w') as f:
     json.dump(procedures, f, indent=2)
 
 print(f'Extracted {len(procedures)} procedures')

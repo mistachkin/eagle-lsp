@@ -96,7 +96,7 @@
     },
     "builtin-command": {
       "name": "support.function.eagle",
-      "match": "(?:^|(?<=\\s|;|\\[))(?:after|append|apply|array|base64|bgerror|callback|cd|clock|close|concat|debug|dict|encoding|eof|eval|exec|exit|expr|fblocked|fconfigure|fcopy|file|flush|format|fpclassify|getf|gets|glob|global|guid|hash|host|incr|info|interp|invoke|join|kill|lappend|lassign|lget|library|lindex|linsert|list|llength|lmap|load|lrange|lremove|lrepeat|lreplace|lreverse|lsearch|lset|lsort|napply|namespace|nop|nproc|object|open|package|parse|pid|proc|puts|pwd|read|regexp|regsub|rename|scope|seek|set|setf|socket|source|split|sql|string|subst|tcl|tell|test1|test2|time|truncate|unload|unset|unsetf|update|upvar|uri|variable|version|vwait|xml)(?=\\s|$|;)"
+      "match": "(?:^|(?<=\\s|;|\\[))(?:after|append|apply|array|base64|bgerror|callback|cd|clock|close|concat|debug|dict|encoding|eof|eval|exec|exit|expr|fblocked|fconfigure|fcopy|file|flush|format|fpclassify|getf|gets|glob|global|guid|hash|host|incr|info|interp|invoke|join|kill|lappend|lassign|lget|library|lindex|linsert|list|llength|lmap|load|lrange|lremove|lrepeat|lreplace|lreverse|lsearch|lset|lsort|napply|namespace|nop|nproc|object|open|package|parse|pid|proc|puts|pwd|read|regexp|regsub|rename|scan|scope|seek|set|setf|socket|source|split|sql|string|subst|tcl|tell|test1|test2|time|truncate|unload|unset|unsetf|update|upvar|uri|variable|version|vwait|xml)(?=\\s|$|;)"
     },
     "option-flag": {
       "name": "entity.other.attribute-name.eagle",

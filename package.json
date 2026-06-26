@@ -1,6 +1,6 @@
 {
   "name": "eagle-scripting-language",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Syntax highlighting for the Eagle scripting language (Tcl for the CLR)",
   "main": "server.js",
   "bin": {

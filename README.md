@@ -53,7 +53,7 @@ npm install
 Or install the VSIX (if packaged):
 ```bash
 npx vsce package
-code --install-extension eagle-scripting-language-1.0.2.vsix
+code --install-extension eagle-scripting-language-1.0.3.vsix
 ```
 
 ### Neovim (via nvim-lspconfig)
@@ -161,6 +161,9 @@ server answers requests from an editor):
   `eagle_procedures.json` (135+ library procedures with their
   signatures and brief descriptions). These extractors run when the
   Eagle docs are updated; they are not invoked at runtime.
+- See [`PIPELINE.md`](PIPELINE.md) for the full source-of-truth
+  chain, per-field provenance, and the step-by-step checklist for
+  adding or updating a command so every layer stays in sync.
 
 ### Runtime — answering LSP requests
 

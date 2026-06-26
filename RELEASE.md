@@ -58,7 +58,7 @@ This script:
 On success you will see output like:
 
 ```
-VSIX created: eagle-scripting-language-1.0.2.vsix
+VSIX created: eagle-scripting-language-1.0.3.vsix
 ```
 
 ## Installing Locally
@@ -66,7 +66,7 @@ VSIX created: eagle-scripting-language-1.0.2.vsix
 Install the extension from the generated `.vsix` file:
 
 ```bash
-code --install-extension eagle-scripting-language-1.0.2.vsix
+code --install-extension eagle-scripting-language-1.0.3.vsix
 ```
 
 Then reload VS Code and open any `.eagle` or `.tcl` file to verify that
@@ -130,7 +130,7 @@ exist at the repository root.
 Inspect the VSIX contents:
 
 ```bash
-unzip -l eagle-scripting-language-1.0.2.vsix | grep server
+unzip -l eagle-scripting-language-1.0.3.vsix | grep server
 ```
 
 You should see entries like `extension/server/server.js`. If they are missing,

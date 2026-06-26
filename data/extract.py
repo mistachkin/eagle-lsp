@@ -6,9 +6,33 @@ import re
 import os
 from html.parser import HTMLParser
 
-DOCS_DIR = "/path/to/eagle-docs"
-REPO_DIR = "/tmp/eagle-docs-repo"
-OUT_DIR = "/path/to/eagle-lsp/data"
+# --- Source and output locations --------------------------------------------
+#
+# These default to the conventional sibling-checkout layout (the "docs" and
+# "lsp" repositories living next to each other) and can each be overridden with
+# an environment variable.
+#
+#   REPO_DIR  the Eagle documentation repository (Markdown source) -- the
+#             sibling "docs" checkout.  Provides "core_script_library.md"
+#             (and "core_language.md", consumed by extract_docs.py).
+#   DOCS_DIR  the *generated* documentation tree: the structured command
+#             inventory "commands.json", the per-command "*.html" pages, and
+#             "EAGLE_COMMAND_REFERENCE.md".  This is a build artifact produced
+#             from the Eagle source tree + docs (see DATA_PIPELINE.md); it is
+#             NOT the Markdown source repo, so it has no in-repo default and
+#             should be supplied via EAGLE_DOCS_BUILD.
+#   OUT_DIR   this LSP repository's "data" directory, where the generated
+#             "eagle_commands.json" / "eagle_procedures.json" are written;
+#             defaults to the directory containing this script.
+#
+_DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+_LSP_ROOT = os.path.dirname(_DATA_DIR)
+
+REPO_DIR = os.environ.get(
+    "EAGLE_DOCS", os.path.join(_LSP_ROOT, os.pardir, "docs"))
+DOCS_DIR = os.environ.get(
+    "EAGLE_DOCS_BUILD", os.path.join(REPO_DIR, "build", "docs"))
+OUT_DIR = os.environ.get("EAGLE_LSP_DATA", _DATA_DIR)
 
 # ── HTML Parser ──────────────────────────────────────────────────────────────
 
