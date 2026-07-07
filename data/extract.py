@@ -18,7 +18,7 @@ from html.parser import HTMLParser
 #   DOCS_DIR  the *generated* documentation tree: the structured command
 #             inventory "commands.json", the per-command "*.html" pages, and
 #             "EAGLE_COMMAND_REFERENCE.md".  This is a build artifact produced
-#             from the Eagle source tree + docs (see DATA_PIPELINE.md); it is
+#             from the Eagle source tree + docs (see PIPELINE.md); it is
 #             NOT the Markdown source repo, so it has no in-repo default and
 #             should be supplied via EAGLE_DOCS_BUILD.
 #   OUT_DIR   this LSP repository's "data" directory, where the generated
