@@ -49,6 +49,18 @@ function scanBraces(text, DiagnosticSeverity) {
   // backslash) the start of each line.
   let atCommandStart = true;
   let continued = false;
+  let continuedComment = false;
+
+  // Tcl performs backslash-newline replacement before it recognizes
+  // commands or comments.  Count the trailing run so that an odd number
+  // continues the physical line while an even number leaves a literal
+  // backslash at the end.  Ignore CR in CRLF documents.
+  const hasLineContinuation = (line) => {
+    let i = line.endsWith('\r') ? line.length - 2 : line.length - 1;
+    let backslashes = 0;
+    while (i >= 0 && line[i] === '\\') { backslashes++; i--; }
+    return backslashes % 2 === 1;
+  };
 
   const report = (message, l, c) => {
     diagnostics.push({
@@ -61,19 +73,27 @@ function scanBraces(text, DiagnosticSeverity) {
 
   for (let l = 0; l < lines.length; l++) {
     const line = lines[l];
+    const contentLength = line.endsWith('\r') ? line.length - 1 : line.length;
+    if (continuedComment) {
+      continuedComment = hasLineContinuation(line);
+      continue;
+    }
     if (!continued) atCommandStart = true;
     continued = false;
-    for (let c = 0; c < line.length; c++) {
+    for (let c = 0; c < contentLength; c++) {
       const ch = line[c];
       if (ch === '\\') {
-        if (c === line.length - 1) { continued = true; }   // line continuation
+        if (c === contentLength - 1) { continued = true; } // line continuation
         else { c++; atCommandStart = false; }             // escape next char
         continue;
       }
       if (ch === '"') { inString = !inString; atCommandStart = false; continue; }
       if (inString) continue;
       if (ch === '#') {
-        if (atCommandStart) break;   // comment: rest of line is ignored
+        if (atCommandStart) {
+          continuedComment = hasLineContinuation(line);
+          break;                     // comment: rest of line is ignored
+        }
         continue;                    // ordinary word character
       }
       if (/\s/.test(ch)) continue;   // whitespace does not leave command start

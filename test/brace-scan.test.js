@@ -35,6 +35,11 @@ const cases = [
   // Line continuation keeps the command open, so a leading # is a word.
   ['backslash continuation then #... is a word',  'set x \\\n  #notacomment {\n}\n', 0],
   ['backslash continuation, # then braces',       'puts \\\n#0\nset y {\n}\n', 0],
+  ['continued comment hides next-line {',         '# note \\\n{\n}\n', 1],
+  ['continued ;# comment hides next-line [',      'set x 1 ;# note \\\n[\n]\n', 1],
+  ['even backslashes do not continue a comment',  '# note \\\\\n{\n}\n', 0],
+  ['CRLF continuation keeps # as a word',         'set x \\\r\n#0 {\r\n}\r\n', 0],
+  ['CRLF continued comment hides next-line {',    '# note \\\r\n{\r\n}\r\n', 1],
 
   // Strings and escapes are unchanged.
   ['braces inside double quotes',                 'set s "a { b"\nset t "}"\n', 0],
