@@ -179,7 +179,11 @@ server answers requests from an editor):
    escape handling — the subtle parts of Tcl-like syntax — and exposes
    helpers for the LSP handlers (`getWordAtPosition`,
    `getCommandContext`, `findVariables`, `findProcedures`,
-   `findMatchingBrace`).
+   `findMatchingBrace`).  **`eagle-brace.js`** is the other half of
+   diagnostics: a dependency-free brace/bracket balance scanner that
+   `validateDocument` runs alongside the parser; it also exports the
+   shared `endsInLineContinuation` helper so both passes agree on
+   Tcl's line-continuation and comment-position rules.
 4. **`server.js` handlers** (one per LSP method —
    `textDocument/completion`, `.../hover`, `.../signatureHelp`,
    `.../documentSymbol`, `.../definition`, `.../references`,
@@ -201,6 +205,9 @@ eagle-lsp/
 ├── server.js                   # Main LSP server (Node.js)
 ├── eagle-data.js               # Documentation data loader
 ├── eagle-parser.js             # Eagle/Tcl tokenizer and parser
+├── eagle-brace.js               # Brace/bracket balance scanner (diagnostics pass one)
+├── test/
+│   └── eagle-brace.test.js      # Scanner unit tests (node --test)
 ├── data/
 │   ├── eagle_commands.json     # 120+ built-in commands with full docs
 │   ├── eagle_procedures.json   # 135+ library procedures

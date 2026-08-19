@@ -49,7 +49,7 @@ This script:
 2. Copies extension client files (syntaxes, icons, language config) into `build/`.
 3. Installs source dependencies needed for bundling.
 4. Bundles `extension.js` with esbuild (inlines `vscode-languageclient`; `vscode` is external).
-5. Bundles `server.js` with esbuild (inlines `eagle-parser.js`, `eagle-data.js`, and server dependencies).
+5. Bundles `server.js` with esbuild (inlines `eagle-parser.js`, `eagle-data.js`, `eagle-brace.js`, and server dependencies).
 6. Copies runtime data files (`data/*.json`) alongside the server bundle.
 7. Generates a `package.json` with no runtime dependencies (everything is bundled).
 8. Runs `npx @vscode/vsce package` to produce the `.vsix` file.
@@ -122,8 +122,8 @@ and `editors/vscode/` directories.
 ### "Cannot find module './server/server.js'"
 
 The server files were not copied into the staging directory. Verify that
-`server.js`, `eagle-parser.js`, `eagle-data.js`, and the `data/` directory all
-exist at the repository root.
+`server.js`, `eagle-parser.js`, `eagle-data.js`, `eagle-brace.js`, and the
+`data/` directory all exist at the repository root.
 
 ### VSIX is missing server files
 

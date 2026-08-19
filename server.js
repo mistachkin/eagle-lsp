@@ -46,6 +46,7 @@ const {
 const { TextDocument } = require('vscode-languageserver-textdocument');
 const eagleData = require('./eagle-data');
 const parser = require('./eagle-parser');
+const { scanBraces } = require('./eagle-brace');
 
 // --- Initialization ---
 const connection = createConnection(ProposedFeatures.all);
@@ -207,17 +208,14 @@ connection.onDidCloseTextDocument((params) => {
  * two independent passes over the open document and sends a single combined
  * diagnostics array to the client.
  *
- * Pass one is a hand-rolled character scan that tracks the depth of curly
- * braces and square brackets while honouring two pieces of Eagle/Tcl
- * lexical context: backslash escapes (the next character is skipped) and
- * double-quoted strings (brace/bracket counting is disabled inside them).
- * It also treats a `#` as a comment only when it is the first non-space
- * character on the line or immediately preceded by whitespace -- this is
- * an approximation of Tcl's "comments are only recognized in command
- * position" rule that is good enough for editor diagnostics.  A negative
- * brace or bracket depth produces an Error-severity diagnostic for the
- * offending closer and the depth is clamped back to zero so a single typo
- * does not avalanche into a wall of cascading errors.
+ * Pass one is `scanBraces` (see `eagle-brace.js`): a hand-rolled character
+ * scan that reports unmatched closing braces/brackets where they occur and
+ * unclosed openers at end of document, honouring Eagle/Tcl lexical
+ * context -- backslash escapes and line continuations (LF and CRLF),
+ * double-quoted strings, braced words (inside which only braces are
+ * special), and Tcl's rule that `#` starts a comment only in command
+ * position.  Its output is capped so a pathological document cannot
+ * produce an unbounded diagnostics array.
  *
  * Pass two delegates to `parser.parseDocument` to obtain a structured list
  * of commands, then for each command word that looks like an actual
@@ -243,45 +241,11 @@ function validateDocument(doc) {
   const text = doc.getText();
   const diagnostics = [];
 
-  // Check for unmatched braces
-  let braceDepth = 0, bracketDepth = 0;
-  const lines = text.split('\n');
-  let inString = false;
-
-  for (let l = 0; l < lines.length; l++) {
-    const line = lines[l];
-    for (let c = 0; c < line.length; c++) {
-      if (line[c] === '\\') { c++; continue; }
-      if (line[c] === '"') { inString = !inString; continue; }
-      if (inString) continue;
-      if (line[c] === '#' && (c === 0 || /\s/.test(line[c-1]))) break; // comment
-      if (line[c] === '{') braceDepth++;
-      else if (line[c] === '}') {
-        braceDepth--;
-        if (braceDepth < 0) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: { start: { line: l, character: c }, end: { line: l, character: c + 1 } },
-            message: 'Unmatched closing brace',
-            source: 'eagle',
-          });
-          braceDepth = 0;
-        }
-      }
-      if (line[c] === '[') bracketDepth++;
-      else if (line[c] === ']') {
-        bracketDepth--;
-        if (bracketDepth < 0) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: { start: { line: l, character: c }, end: { line: l, character: c + 1 } },
-            message: 'Unmatched closing bracket',
-            source: 'eagle',
-          });
-          bracketDepth = 0;
-        }
-      }
-    }
+  // Check for unmatched braces.  NOTE: a plain loop, not
+  // `diagnostics.push(...scanBraces(...))` -- spreading a large array as
+  // call arguments can overflow the argument limit and throw.
+  for (const diagnostic of scanBraces(text, DiagnosticSeverity)) {
+    diagnostics.push(diagnostic);
   }
 
   // Check for unknown commands (warning level)

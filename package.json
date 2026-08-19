@@ -7,7 +7,8 @@
     "eagle-language-server": "./server.js"
   },
   "scripts": {
-    "start": "node server.js --stdio"
+    "start": "node server.js --stdio",
+    "test": "node --test"
   },
   "keywords": ["eagle", "tcl", "lsp", "language-server"],
   "license": "MIT",
