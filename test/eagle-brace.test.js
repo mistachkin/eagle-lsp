@@ -64,6 +64,19 @@ const cases = [
   ['quote inside braces is literal',              'set re {"}\n}\n', 1],
   ['escaped brace inside braced word',            'set x {\\{}\n', 0],
 
+  // Braces and quotes group only at the beginning of a word.  Mid-word
+  // structural-looking characters are literal data in real Tcl.
+  ['opening brace in a bare word is literal',     'set x prefix{suffix\n', 0],
+  ['closing brace in a bare word is literal',     'set x prefix}suffix\n', 0],
+  ['closing brace as an argument is literal',     'set x }\n', 0],
+  ['closing bracket in a bare word is literal',   'set x prefix]suffix\n', 0],
+  ['mid-word quote does not hide later errors',   'set x prefix"suffix\n}\n', 1],
+  ['continuation begins a new braced word',       'set x \\\n{\n', 1],
+  ['command continues after multiline braced word',
+    'set x {\n} #notcomment {\n}\n', 0],
+  ['command continues after multiline quoted word',
+    'set x "a\n" #notcomment {\n}\n', 0],
+
   // Unbalanced brace hidden in a braced-body "comment": real Tcl fails
   // with "missing close-brace: possible unbalanced brace in comment".
   ['unbalanced { in comment inside braced body',
@@ -108,7 +121,7 @@ test('unclosed opener diagnostic points at the opener', () => {
 });
 
 test('pathological input is capped, not unbounded', () => {
-  const diags = scan('}'.repeat(200000));
+  const diags = scan('}\n'.repeat(200000));
   assert.equal(diags.length, MAX_DIAGNOSTICS);
 });
 

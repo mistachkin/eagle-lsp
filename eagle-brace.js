@@ -53,7 +53,9 @@ function endsInLineContinuation(line) {
  *     characters there -- `set re {]}`, `set x {a;# {}}`, and
  *     `set s {"}` are all well-formed.  Braces on comment-LOOKING lines
  *     inside a braced word still count, exactly as in Tcl's own
- *     brace-matching rule.
+ *     brace-matching rule.  An opening brace starts this grouping only at
+ *     the beginning of a word; braces in `prefix{suffix` and
+ *     `prefix}suffix` are literal data.
  *   - Double-quoted strings (outside braces): brace/bracket counting is
  *     disabled inside them.
  *   - Comments: a `#` starts a comment ONLY in command position -- the
@@ -88,6 +90,10 @@ function scanBraces(text, DiagnosticSeverity) {
   // True while the scanner is at the start of a command -- the only place
   // Tcl recognises a `#` comment.  Only meaningful at brace depth zero.
   let atCommandStart = true;
+  // Braces and double quotes begin grouping only as the first character of
+  // a word.  Whitespace and backslash-newline begin a new word without
+  // beginning a new command, so this state is distinct from atCommandStart.
+  let atWordStart = true;
   let continued = false;   // previous code line ended in a continuation
   let inComment = false;   // previous comment line ended in a continuation
 
@@ -111,13 +117,27 @@ function scanBraces(text, DiagnosticSeverity) {
       inComment = endsInLineContinuation(line);
       continue;
     }
-    if (!continued) atCommandStart = true;
+    // A physical newline starts a new command only at the active script
+    // level.  Newlines inside braced or quoted words belong to the outer
+    // command, which resumes after the closing delimiter.
+    if (!continued && braceStack.length === 0 && !inString) {
+      atCommandStart = true;
+      atWordStart = true;
+    }
     continued = false;
     for (let c = 0; c < line.length; c++) {
       const ch = line[c];
       if (ch === '\\') {
-        if (c === line.length - 1) { continued = true; } // line continuation
-        else { c++; if (braceStack.length === 0) atCommandStart = false; }
+        if (c === line.length - 1) {
+          continued = true;
+          if (braceStack.length === 0) atWordStart = true;
+        } else {
+          c++;
+          if (braceStack.length === 0) {
+            atCommandStart = false;
+            atWordStart = false;
+          }
+        }
         continue;
       }
       if (braceStack.length > 0) {
@@ -126,38 +146,61 @@ function scanBraces(text, DiagnosticSeverity) {
         else if (ch === '}') braceStack.pop();
         continue;
       }
-      if (ch === '"') { inString = !inString; atCommandStart = false; continue; }
-      if (inString) continue;
+      if (inString) {
+        if (ch === '"') inString = false;
+        continue;
+      }
+      if (ch === '"' && atWordStart) {
+        inString = true;
+        atCommandStart = false;
+        atWordStart = false;
+        continue;
+      }
       if (ch === '#') {
         if (atCommandStart) {
           if (endsInLineContinuation(line)) inComment = true;
           break; // comment: the rest of the line is ignored
         }
         atCommandStart = false; // ordinary word character
+        atWordStart = false;
         continue;
       }
       if (ch === ' ' || ch === '\t' || ch === '\f' || ch === '\v') {
+        atWordStart = true;
         continue; // whitespace does not leave command position
       }
-      if (ch === ';') { atCommandStart = true; continue; }
-      if (ch === '{') { braceStack.push([l, c]); atCommandStart = false; continue; }
-      if (ch === '}') {
-        report('Unmatched closing brace', l, c);
+      if (ch === ';') {
+        atCommandStart = true;
+        atWordStart = true;
+        continue;
+      }
+      if (ch === '{' && atWordStart) {
+        braceStack.push([l, c]);
         atCommandStart = false;
+        atWordStart = false;
+        continue;
+      }
+      if (ch === '}') {
+        if (atCommandStart) report('Unmatched closing brace', l, c);
+        atCommandStart = false;
+        atWordStart = false;
         continue;
       }
       if (ch === '[') {
         bracketStack.push([l, c]);
         atCommandStart = true; // a new command begins inside [ ]
+        atWordStart = true;
         continue;
       }
       if (ch === ']') {
         if (bracketStack.length > 0) bracketStack.pop();
-        else report('Unmatched closing bracket', l, c);
+        else if (atCommandStart) report('Unmatched closing bracket', l, c);
         atCommandStart = false;
+        atWordStart = false;
         continue;
       }
       atCommandStart = false; // every remaining case is inside a word
+      atWordStart = false;
     }
   }
 
