@@ -67,9 +67,18 @@ function endsInLineContinuation(line) {
  *     tclsh.  Conversely a stray `}` or `]` mid-word or at word start
  *     (`puts a}b`, `puts }`) is legal literal data and is NOT reported;
  *     an unmatched closer is flagged only in command position.
- *   - Double-quoted strings (outside braces): brace/bracket counting is
- *     disabled inside them.  A quote begins a string only at the start
- *     of a word; `puts a"b` is literal.
+ *   - Double-quoted strings (outside braces): braces are literal inside
+ *     them, but command substitution (`[...]`) and braced variable
+ *     names (`${...}`) stay ACTIVE, exactly as in Tcl -- the string is
+ *     suspended for the substitution and resumes after it, to any
+ *     nesting depth.  A quote begins a string only at the start of a
+ *     word (`puts a"b` is literal), and an unterminated string is
+ *     reported at its opening quote ("missing quote" in tclsh).
+ *   - NO `{*}` argument expansion: Eagle (Tcl 8.4 language baseline)
+ *     does not support Tcl 8.5's expansion prefix, so `puts {*}$args`
+ *     is an "extra characters after close-brace" error here -- exactly
+ *     what the Eagle interpreter reports.  Do not "fix" this to match
+ *     modern Tcl; the target language is Eagle.
  *   - Comments: a `#` starts a comment ONLY in command position -- the
  *     start of a line (unless the previous line continued), or the first
  *     non-whitespace after a `;` or an opening `[` -- and only at brace
@@ -118,7 +127,8 @@ function scanBraces(text, DiagnosticSeverity) {
   const COMMAND_START = 0, WORD_START = 1, IN_WORD = 2, AFTER_CLOSE = 3;
   let wordPos = COMMAND_START;
   let lastClose = 'brace'; // which kind of word closed ('brace'/'quote')
-  let varNameStart = null; // [line, col] of the '{' in an open '${'
+  let varNameStart = null; // [line, col, fromString] of the '{' in an open '${'
+  let stringStart = null;  // [line, col] of the current string's opening '"'
   let continued = false;   // previous code line ended in a continuation
   let inComment = false;   // previous comment line ended in a continuation
 
@@ -163,8 +173,14 @@ function scanBraces(text, DiagnosticSeverity) {
       const ch = line[c];
       if (varNameStart !== null) {
         // Braced variable name: everything (no nesting, no escapes) up
-        // to the first '}' -- Tcl's rule for `${name}`.
-        if (ch === '}') { varNameStart = null; wordPos = IN_WORD; }
+        // to the first '}' -- Tcl's rule for `${name}`.  When the name
+        // was opened inside a double-quoted string, the string simply
+        // resumes.
+        if (ch === '}') {
+          const fromString = varNameStart[2];
+          varNameStart = null;
+          if (!fromString) wordPos = IN_WORD;
+        }
         continue;
       }
       if (ch === '\\') {
@@ -189,12 +205,36 @@ function scanBraces(text, DiagnosticSeverity) {
           braceStack.push([l, c]);
         } else if (ch === '}') {
           braceStack.pop();
-          if (braceStack.length === 0) { wordPos = AFTER_CLOSE; lastClose = 'brace'; }
+          if (braceStack.length === 0) {
+            // NOTE: unlike Tcl 8.5+, Eagle has NO `{*}` argument
+            // expansion, so a word-initial `{*}` is a complete braced
+            // word like any other: `puts {*}$args` is Eagle's "extra
+            // characters after close-brace" error, and is reported as
+            // such here (verified against the Eagle shell).
+            wordPos = AFTER_CLOSE;
+            lastClose = 'brace';
+          }
         }
         continue;
       }
       if (inString) {
-        if (ch === '"') { inString = false; wordPos = AFTER_CLOSE; lastClose = 'quote'; }
+        if (ch === '"') {
+          inString = false;
+          stringStart = null;
+          wordPos = AFTER_CLOSE;
+          lastClose = 'quote';
+        } else if (ch === '[') {
+          // Command substitution stays active inside double quotes; the
+          // string resumes after the matching close bracket.
+          bracketStack.push([l, c, true, stringStart]);
+          inString = false;
+          stringStart = null;
+          wordPos = COMMAND_START;
+        } else if (ch === '$' && c + 1 < line.length && line[c + 1] === '{') {
+          // Braced variable names substitute inside quotes too.
+          varNameStart = [l, c + 1, true];
+          c++;
+        }
         continue;
       }
       if (ch === '#') {
@@ -220,7 +260,7 @@ function scanBraces(text, DiagnosticSeverity) {
         if (wordPos === AFTER_CLOSE) extraChars(l, c);
         else wordPos = IN_WORD;
         if (c + 1 < line.length && line[c + 1] === '{') {
-          varNameStart = [l, c + 1];
+          varNameStart = [l, c + 1, false];
           c++; // consume the '{' so the variable-name branch owns it
         }
         continue;
@@ -228,10 +268,12 @@ function scanBraces(text, DiagnosticSeverity) {
       if (ch === '"') {
         if (wordPos === COMMAND_START || wordPos === WORD_START) {
           inString = true;
+          stringStart = [l, c];
           wordPos = IN_WORD;
         } else if (wordPos === AFTER_CLOSE) {
           extraChars(l, c);
           inString = true; // recover by scanning the quoted text anyway
+          stringStart = [l, c];
         } else {
           wordPos = IN_WORD; // mid-word quote is literal
         }
@@ -263,14 +305,20 @@ function scanBraces(text, DiagnosticSeverity) {
       if (ch === '[') {
         // Command substitution starts anywhere in a word...
         if (wordPos === AFTER_CLOSE) extraChars(l, c);
-        bracketStack.push([l, c]);
+        bracketStack.push([l, c, false, null]);
         wordPos = COMMAND_START; // ...and a new command begins inside it
         continue;
       }
       if (ch === ']') {
         if (bracketStack.length > 0) {
-          bracketStack.pop();
-          wordPos = IN_WORD; // the enclosing word continues: `a[cmd]b`
+          const entry = bracketStack.pop();
+          if (entry[2]) {
+            // This bracket suspended a double-quoted string: resume it.
+            inString = true;
+            stringStart = entry[3];
+          } else {
+            wordPos = IN_WORD; // the enclosing word continues: `a[cmd]b`
+          }
         } else if (wordPos === COMMAND_START) {
           report('Unmatched closing bracket', l, c);
           wordPos = IN_WORD;
@@ -288,7 +336,15 @@ function scanBraces(text, DiagnosticSeverity) {
   }
 
   for (const [l, c] of braceStack) report('Unclosed opening brace', l, c);
-  for (const [l, c] of bracketStack) report('Unclosed opening bracket', l, c);
+  for (const [l, c, fromString, sStart] of bracketStack) {
+    report('Unclosed opening bracket', l, c);
+    if (fromString && sStart) {
+      report('Unclosed double quote', sStart[0], sStart[1]);
+    }
+  }
+  if (inString && stringStart) {
+    report('Unclosed double quote', stringStart[0], stringStart[1]);
+  }
   if (varNameStart !== null) {
     report('Missing close-brace for variable name', varNameStart[0], varNameStart[1]);
   }

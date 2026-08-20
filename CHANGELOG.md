@@ -24,6 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The scanner's word-position flags were consolidated into a single
   four-state variable (command start / word start / in word / after
   close), making the state invariants explicit.
+- Eagle divergence honoured: Eagle (Tcl 8.4 baseline) has no `{*}`
+  argument expansion, so `puts {*}$args` is reported as "Extra
+  characters after close-brace" — exactly what the Eagle interpreter
+  says (verified against the Eagle shell; Tcl 8.5+ would accept it).
+- Command substitution and braced variable names are now tracked inside
+  double-quoted strings (`"a[list b]c"`, `"${x}"`), so an unclosed `[`
+  or `${` inside a string is reported, and nested quotes via
+  substitution (`"a[list "b"]c"`) no longer false-positive.
+- An unterminated double-quoted string is reported at its opening quote
+  ("missing quote"), instead of being silently ignored.
 - False "Unmatched closing brace" diagnostics: `#` now starts a comment only
   in command position — `uplevel #0 { ... }`, `set c #ff0000`, and similar
   words are no longer swallowed as comments (#1).
