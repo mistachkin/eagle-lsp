@@ -46,7 +46,7 @@ const {
 const { TextDocument } = require('vscode-languageserver-textdocument');
 const eagleData = require('./eagle-data');
 const parser = require('./eagle-parser');
-const { scanBraces } = require('./eagle-brace');
+const { scanDocument } = require('./eagle-brace');
 
 // --- Initialization ---
 const connection = createConnection(ProposedFeatures.all);
@@ -208,7 +208,7 @@ connection.onDidCloseTextDocument((params) => {
  * two independent passes over the open document and sends a single combined
  * diagnostics array to the client.
  *
- * Pass one is `scanBraces` (see `eagle-brace.js`): a hand-rolled character
+ * Pass one is `scanDocument` (see `eagle-brace.js`): a hand-rolled character
  * scan that reports unmatched closing braces/brackets where they occur and
  * unclosed openers at end of document, honouring Eagle/Tcl lexical
  * context -- backslash escapes and line continuations (LF and CRLF),
@@ -224,6 +224,10 @@ connection.onDidCloseTextDocument((params) => {
  * library procedure.  If no match is found, the same document is scanned
  * for user-defined `proc` declarations via `parser.findProcedures` so that
  * forward references and procs defined later in the file are not flagged.
+ * Lines that are the interior of a multiline DATA word (per
+ * `parser.getDataWordLines`, fed by pass one's per-line lexical states)
+ * are skipped entirely: `red` inside `set colors {...}` is list content,
+ * not a command.
  * Anything that survives all of those filters is reported as a Hint-level
  * diagnostic, which most editors render unobtrusively.
  *
@@ -242,15 +246,26 @@ function validateDocument(doc) {
   const diagnostics = [];
 
   // Check for unmatched braces.  NOTE: a plain loop, not
-  // `diagnostics.push(...scanBraces(...))` -- spreading a large array as
-  // call arguments can overflow the argument limit and throw.
-  for (const diagnostic of scanBraces(text, DiagnosticSeverity)) {
+  // `diagnostics.push(...)` with spread -- spreading a large array as
+  // call arguments can overflow the argument limit and throw.  The
+  // per-line lexical states from the same scan feed the data-word
+  // classification below, so the document is only scanned once.
+  const { diagnostics: braceDiagnostics, lineStates } =
+    scanDocument(text, DiagnosticSeverity);
+  for (const diagnostic of braceDiagnostics) {
     diagnostics.push(diagnostic);
   }
 
-  // Check for unknown commands (warning level)
+  // Check for unknown commands (warning level).  Lines that are the
+  // interior of a multiline DATA word -- `set colors {\n  red\n}`, a
+  // multiline quoted string, switch patterns -- are skipped: their
+  // content is not a command invocation, so hinting "Unknown command:
+  // 'red'" there would be noise.  Lines inside script bodies (proc, if,
+  // while, ...) are still checked.
   const cmds = parser.parseDocument(text);
+  const dataWordLines = parser.getDataWordLines(text, cmds, lineStates);
   for (const cmd of cmds) {
+    if (dataWordLines.has(cmd.line)) continue;
     if (cmd.commandName && !cmd.commandName.startsWith('$') && !cmd.commandName.startsWith('[') &&
         !cmd.commandName.includes('::') && !cmd.commandName.startsWith('{')) {
       const name = cmd.commandName;

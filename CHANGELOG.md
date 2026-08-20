@@ -6,6 +6,19 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- False "Unknown command" hints inside multiline data words: the interior
+  lines of `set colors {\n  red green\n}`, multiline quoted strings, and
+  `switch` pattern blocks are no longer treated as command invocations.
+  Lines inside script bodies (`proc`, `if`, `while`, `foreach`, `catch`,
+  `namespace eval`, ...) are still checked, including data words nested
+  inside them.  The classification is driven by the brace scanner's
+  per-line lexical state (new `scanDocument` API), so both diagnostic
+  passes share one source of truth — and one scan per validation.
+
 ## [1.0.4] - 2026-08-20
 
 ### Fixed

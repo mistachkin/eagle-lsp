@@ -100,10 +100,19 @@ function endsInLineContinuation(line) {
  * @param {string} text - Full document text.
  * @param {{Error: number}} DiagnosticSeverity - Severity enum to stamp on
  *   each diagnostic; passed in so this module has no import of its own.
- * @returns {Array<object>} LSP diagnostic objects, possibly empty.
+ * @returns {{diagnostics: Array<object>, lineStates: Array<object>}}
+ *   "diagnostics" is the LSP diagnostic array (possibly empty).
+ *   "lineStates" has one entry per line of `text`, describing the lexical
+ *   context at the START of that line: "braceOpener" is the [line, col]
+ *   of the innermost still-open `{` (null at brace depth zero),
+ *   "inString" is true inside a multiline double-quoted word, and
+ *   "inComment" is true on the trailing lines of a continued comment.
+ *   Callers (e.g. the unknown-command pass) use this to tell which lines
+ *   are the interior of a multiline word rather than fresh commands.
  */
-function scanBraces(text, DiagnosticSeverity) {
+function scanDocument(text, DiagnosticSeverity) {
   const diagnostics = [];
+  const lineStates = [];
   const braceStack = [];   // [line, column] of each unmatched '{'
   const bracketStack = []; // [line, column] of each unmatched '['
   const lines = text.split('\n');
@@ -155,6 +164,11 @@ function scanBraces(text, DiagnosticSeverity) {
     if (line.length > 0 && line[line.length - 1] === '\r') {
       line = line.slice(0, -1); // CRLF document: drop the carriage return
     }
+    lineStates.push({
+      braceOpener: braceStack.length > 0 ? braceStack[braceStack.length - 1] : null,
+      inString,
+      inComment,
+    });
     if (inComment) {
       // A continued comment swallows this whole line too.
       inComment = endsInLineContinuation(line);
@@ -348,7 +362,22 @@ function scanBraces(text, DiagnosticSeverity) {
   if (varNameStart !== null) {
     report('Missing close-brace for variable name', varNameStart[0], varNameStart[1]);
   }
-  return diagnostics;
+  return { diagnostics, lineStates };
 }
 
-module.exports = { scanBraces, endsInLineContinuation, MAX_DIAGNOSTICS };
+/**
+ * Back-compat wrapper around `scanDocument` returning only the
+ * diagnostics array -- the shape `validateDocument` historically used
+ * and the unit tests exercise.
+ *
+ * @param {string} text - Full document text.
+ * @param {{Error: number}} DiagnosticSeverity - Severity enum.
+ * @returns {Array<object>} LSP diagnostic objects, possibly empty.
+ */
+function scanBraces(text, DiagnosticSeverity) {
+  return scanDocument(text, DiagnosticSeverity).diagnostics;
+}
+
+module.exports = {
+  scanBraces, scanDocument, endsInLineContinuation, MAX_DIAGNOSTICS,
+};

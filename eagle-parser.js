@@ -4,7 +4,7 @@
  */
 'use strict';
 
-const { endsInLineContinuation } = require('./eagle-brace');
+const { endsInLineContinuation, scanDocument } = require('./eagle-brace');
 
 /**
  * Token types emitted by the scanner.
@@ -709,7 +709,93 @@ function findMatchingBrace(text, line, character) {
   return null;
 }
 
+/**
+ * Commands whose braced argument(s) are SCRIPTS: their multiline braced
+ * words contain commands, so per-line analysis (and unknown-command
+ * hints) inside them is meaningful.  Any command NOT in this set is
+ * assumed to take braced arguments as DATA (`set colors {...}`,
+ * `list`, `switch` patterns, `test2 -body` scripts, ...), where the
+ * interior lines are not command invocations.
+ *
+ * Deliberate choices: `switch` is omitted because the immediate lines of
+ * its braced argument are patterns, not commands (its arm bodies are
+ * nested braced words owned by the pattern, which is likewise not in
+ * this set); unknown/user commands default to data because a wrong
+ * "Unknown command" hint is worse than a missing one.  Limitation: for
+ * commands taking both list and script arguments (`foreach {v} {list}
+ * {body}`), every multiline braced argument is treated as script.
+ */
+const SCRIPT_BODY_COMMANDS = new Set([
+  'proc', 'if', 'while', 'for', 'foreach', 'lmap', 'do', 'catch', 'try',
+  'eval', 'uplevel', 'apply', 'namespace', 'time', 'after', 'interp',
+]);
+
+/**
+ * Classify which lines of `text` are the INTERIOR of a multiline word
+ * rather than fresh commands, so the unknown-command pass can skip them.
+ *
+ * A line is a data-word line when, at its start, the scanner says it is
+ * (a) inside a multiline double-quoted word (`set x "hello\nworld"` --
+ * always data), or (b) inside a braced word whose owning command is not
+ * one of the SCRIPT_BODY_COMMANDS above.  The owning command is the last
+ * command record on or before the line where the innermost still-open
+ * `{` appeared -- so in `proc p {} { set colors { red } }` spread over
+ * lines, the `red` line is owned by `set` (data, suppressed) while the
+ * `set colors {` line itself is owned by `proc` (script, analyzed).
+ *
+ * How it works: `scanDocument` (the brace scanner, the single source of
+ * truth for cross-line lexical state) supplies each line's start-of-line
+ * context; one pass over `commands` builds a last-command-per-line
+ * index; each line's owner is then resolved and tested against the
+ * script-command set.
+ *
+ * @param {string} text - Full document text.
+ * @param {Array<{line: number, commandName: string}>} commands - The
+ *   command records from `parseDocument(text)` (passed in so callers
+ *   that already parsed the document do not parse it twice).
+ * @param {Array<object>} [lineStates] - Optional precomputed per-line
+ *   states from `scanDocument(text)`; pass them when the caller has
+ *   already scanned the document (as `validateDocument` has, for pass
+ *   one) to avoid a second scan.
+ * @returns {Set<number>} Zero-based line numbers whose content is data.
+ */
+function getDataWordLines(text, commands, lineStates) {
+  if (!lineStates) {
+    lineStates = scanDocument(text, { Error: 1 }).lineStates;
+  }
+  const dataLines = new Set();
+
+  // lastCmdName[l] = name of the last command that started on or before
+  // line l (null before the first command).
+  const cmdAtLine = new Map();
+  for (const cmd of commands) {
+    if (cmd.commandName) cmdAtLine.set(cmd.line, cmd.commandName);
+  }
+  const lastCmdName = new Array(lineStates.length);
+  let carry = null;
+  for (let l = 0; l < lineStates.length; l++) {
+    if (cmdAtLine.has(l)) carry = cmdAtLine.get(l);
+    lastCmdName[l] = carry;
+  }
+
+  for (let l = 0; l < lineStates.length; l++) {
+    const state = lineStates[l];
+    if (state.inString) {
+      dataLines.add(l); // multiline quoted words are always data
+      continue;
+    }
+    if (state.braceOpener) {
+      const owner = lastCmdName[state.braceOpener[0]];
+      if (owner === null || !SCRIPT_BODY_COMMANDS.has(owner)) {
+        dataLines.add(l);
+      }
+    }
+  }
+  return dataLines;
+}
+
 module.exports = {
   TokenType, tokenizeLine, parseDocument, getWordAtPosition,
-  getCommandContext, findVariables, findProcedures, findMatchingBrace
+  getCommandContext, findVariables, findProcedures, findMatchingBrace,
+  getDataWordLines
 };
