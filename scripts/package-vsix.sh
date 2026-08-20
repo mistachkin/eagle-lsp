@@ -39,7 +39,7 @@ VSCODE_DIR="$REPO_ROOT/editors/vscode"
 echo "==> Repository root: $REPO_ROOT"
 
 # ---- Validate required source files exist ----
-for f in server.js eagle-parser.js eagle-data.js; do
+for f in server.js eagle-parser.js eagle-data.js eagle-brace.js; do
   if [ ! -f "$REPO_ROOT/$f" ]; then
     echo "ERROR: Missing $f in $REPO_ROOT" >&2
     exit 1

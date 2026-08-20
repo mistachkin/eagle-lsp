@@ -4,6 +4,8 @@
  */
 'use strict';
 
+const { endsInLineContinuation } = require('./eagle-brace');
+
 /**
  * Token types emitted by the scanner.
  */
@@ -76,11 +78,17 @@ const TokenType = {
  *
  * @param {string} line - One line of Eagle/Tcl source, without a trailing
  *   newline.  The caller is responsible for splitting multi-line input.
+ * @param {{continuedFromPreviousLine?: boolean}} [opts] - When
+ *   "continuedFromPreviousLine" is true, the line begins mid-command
+ *   (the previous line ended in a backslash continuation), so a leading
+ *   "#" is an ordinary word -- e.g. "puts \" then "#0" -- rather than a
+ *   comment.  Omitted by prefix-tokenizing callers, which treat the line
+ *   as a fresh command.
  * @returns {Array<{type: string, text: string, start: number, end: number}>}
  *   An array of token records in left-to-right order.  "start" and "end"
  *   are byte offsets within "line"; an empty input yields an empty array.
  */
-function tokenizeLine(line) {
+function tokenizeLine(line, opts) {
   const tokens = [];
   let i = 0;
   const len = line.length;
@@ -104,8 +112,15 @@ function tokenizeLine(line) {
     if (i >= len) break;
     const ch = line[i];
 
-    // Comment (only at start of command)
-    if (ch === '#' && (tokens.length === 0 || tokens[tokens.length-1].type === TokenType.NEWLINE || tokens[tokens.length-1].type === TokenType.SEMICOLON)) {
+    // Comment (only at start of command: line start -- unless the line is
+    // a continuation of the previous one -- or right after ";" or "[").
+    // This mirrors the command-position rule in eagle-brace.js so the two
+    // diagnostic passes agree on what a comment is.
+    if (ch === '#' &&
+        ((tokens.length === 0 && !(opts && opts.continuedFromPreviousLine)) ||
+         (tokens.length > 0 && (tokens[tokens.length-1].type === TokenType.NEWLINE ||
+                                tokens[tokens.length-1].type === TokenType.SEMICOLON ||
+                                tokens[tokens.length-1].type === TokenType.BRACKET_OPEN)))) {
       tokens.push({ type: TokenType.COMMENT, text: line.slice(i), start: i, end: len });
       i = len;
       continue;
@@ -224,7 +239,8 @@ function tokenizeLine(line) {
  *
  * How it works: a small state machine tracks the command currently being
  * accumulated.  For each line it remembers whether the previous line ended
- * with a trailing "\\" (line continuation); if so, this line's tokens are
+ * with an unescaped trailing "\\" (line continuation, per the shared
+ * endsInLineContinuation helper); if so, this line's tokens are
  * appended to the in-progress command instead of starting a new one.
  * Otherwise the previous command (if any) is flushed and a fresh scan of
  * the line begins.  Within a non-continuation line, semicolons split
@@ -277,13 +293,14 @@ function parseDocument(text) {
 
   for (let lineNum = 0; lineNum < lines.length; lineNum++) {
     const line = lines[lineNum];
-    const trimmed = line.trimEnd();
 
-    // Check for line continuation
+    // Check for line continuation.  The shared helper is escape-parity
+    // aware (`C:\\` does not continue; `a\\\` does) and CRLF-tolerant,
+    // and it is the same rule the brace scanner uses.
     const isContinuation = continuation;
-    continuation = trimmed.endsWith('\\');
+    continuation = endsInLineContinuation(line);
 
-    const tokens = tokenizeLine(line);
+    const tokens = tokenizeLine(line, { continuedFromPreviousLine: isContinuation });
     if (tokens.length === 0) {
       if (isContinuation) continue;
       // Flush current command

@@ -6,6 +6,30 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- False "Unmatched closing brace" diagnostics: `#` now starts a comment only
+  in command position — `uplevel #0 { ... }`, `set c #ff0000`, and similar
+  words are no longer swallowed as comments (#1).
+- The brace scanner now matches Tcl's lexical rules inside braced words
+  (`#`, `;`, `"`, `[`, and `]` are literal there), honours line
+  continuations on both LF and CRLF documents with backslash escape
+  parity, and continues comments across a trailing backslash.
+- Unclosed `{` / `[` are now reported at the opener when the document
+  ends, matching Tcl's "missing close-brace" behaviour.
+- Diagnostics from the brace scanner are capped so a pathological
+  document cannot crash validation or flood the client.
+- The parser and the brace scanner now share one line-continuation and
+  comment-position rule (`eagle-brace.js`), so the two diagnostic passes
+  can no longer disagree.
+
+### Added
+
+- Unit tests for the brace scanner (`npm test`, Node's built-in runner);
+  every expectation is cross-checked against real `tclsh` behaviour.
+
 ## [1.0.3] - 2026-06-25
 
 ### Added
