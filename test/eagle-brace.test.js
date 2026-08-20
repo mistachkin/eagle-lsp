@@ -2,8 +2,11 @@
 // Unit tests for the brace/bracket scanner behind "Unmatched closing brace".
 // Zero dependencies: uses Node's built-in test runner.  Run with:
 //     npm test           (or: node --test)
-// Every case with expectation 0 is a script real tclsh accepts; every case
-// with a nonzero expectation is one tclsh rejects.
+// Every script case below has been verified against the EAGLE interpreter
+// (the target language -- Tcl 8.4 baseline, no {*} expansion): expectation
+// 0 means Eagle parses the document, nonzero means Eagle rejects it with a
+// brace/bracket/quote error.  Where Eagle and modern Tcl diverge, Eagle
+// wins; the divergences are marked in the case comments.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { scanBraces, endsInLineContinuation, MAX_DIAGNOSTICS } =
@@ -86,6 +89,108 @@ const cases = [
   ['braces inside double quotes',                 'set s "a { b"\nset t "}"\n', 0],
   ['escaped braces',                              'set s \\{\nset t \\}\n', 0],
 
+  // Word ends: after a closed braced/quoted word, Tcl allows only
+  // whitespace, ';', a closing ']', end of line, or a continuation.
+  // Everything else is "extra characters after close-brace/close-quote".
+  ['extra } after close-brace',                   'set x {a}}\n', 1],
+  ['extra } after proc body',                     'proc p {} {\n  puts hi\n}}\n', 1],
+  ['extra { after close-brace',                   'set x {a}{b\n', 1],
+  ['extra ] after close-brace',                   'set x {a}]\n', 1],
+  ['extra [ after close-brace',                   'set x {a}[list]\n', 1],
+  ['extra quote after close-brace',               'set x {a}"b"\n', 1],
+  ['extra escape after close-brace',              'set x {a}\\b\n', 1],
+  ['extra word char after close-brace',           'set x {a}b\n', 1],
+  ['extra # after close-brace',                   'set x {a}#c\n', 1],
+  ['extra } after close-quote',                   'set x "a"}\n', 1],
+  ['extra { after close-quote',                   'set x ""{\n', 1],
+  ['one typo, one diagnostic (no cascade)',       'set x {a}bcdef{\n', 1],
+  ['whitespace after close-brace is fine',        'set x {a} {b}\n', 0],
+  ['; after close-brace is fine',                 'set x {a};puts hi\n', 0],
+  ['] after close-brace closes substitution',     'puts [list {a}]\n', 0],
+  ['continuation after close-brace separates',    'set x {a}\\\nb\n', 0],
+  ['EOL after close-brace is fine',               'set x {a}\nset y {b}\n', 0],
+
+  // Braced variable names: ${ is special even mid-word, no nesting.
+  ['unclosed braced variable name',               'set x ${y\n', 1],
+  ['braced variable name then text',              'set x ${y}tail\n', 0],
+  ['braced variable name mid-word',               'puts pre${y}post\n', 0],
+  ['escaped $ does not open variable name',       'puts \\${y\nset z {\n}\n', 0],
+
+  // Continuation inside a quoted string must not leak word state
+  // through the closing quote.
+  ['string continuation then extra { after quote','set x "a\\\n"{c\n', 1],
+
+  // --- Tcl quoting corner cases, all oracle-verified against tclsh ---
+
+  // Eagle divergence: Eagle (Tcl 8.4 baseline) has NO {*} argument
+  // expansion, so a word-initial {*} is a complete braced word and
+  // anything directly after it is "extra characters after close-brace"
+  // -- verified against the Eagle shell, which rejects all of these.
+  // (Tcl 8.5+ would accept the first five; the target language wins.)
+  ['no expansion: {*} before $var',               'puts {*}$argv\n', 1],
+  ['no expansion: {*} before [cmd]',              'puts {*}[list a b]\n', 1],
+  ['no expansion: {*} before braced word',        'puts {*}{a b}\n', 1],
+  ['no expansion: {*} before quoted word',        'puts {*}"a b"\n', 1],
+  ['no expansion: {*} before bare word',          'set x {*}z\n', 1],
+  ['bare {*} word alone is a literal *',          'set x {*}\n', 0],
+  ['{**} then char',                              'set x {**}b\n', 1],
+  ['{} then char',                                'set x {}b\n', 1],
+  ['{ *} then char',                              'set x { *}b\n', 1],
+  ['{*}{*} then $var',                            'puts {*}{*}$argv\n', 1],
+
+  // Double-quoted strings: command and variable substitution stay
+  // active inside them, and an unterminated string is an error.
+  ['unterminated quote at EOF',                   'set x "abc\n', 1],
+  ['unterminated quote does not hide the rest',   'set x "abc\nset y {\n}\n', 1],
+  ['command subst inside quotes',                 'set x "a[list b]c"\n', 0],
+  ['unclosed [ inside quotes',                    'set x "a[list b"\n', 2],
+  ['nested quotes via subst',                     'set x "a[list "b"]c"\n', 0],
+  ['braces inside subst inside quotes',           'set x "a[list {b c}]d"\n', 0],
+  ['stray ] inside quotes is literal',            'set x "a]b"\n', 0],
+  ['stray } inside quotes is literal',            'set x "a}b"\n', 0],
+  ['stray { inside quotes is literal',            'set x "a{b"\n', 0],
+  ['semicolon inside quotes is literal',          'set x "a;b"\nset y {\n}\n', 0],
+  ['hash inside quotes is literal',               'set x "a#b {"\nset y 1\n', 0],
+  ['escaped quote inside string',                 'set x "a\\"b"\n', 0],
+  ['escaped backslash then close quote',          'set x "a\\\\"\n', 0],
+  ['braced varname inside quotes',                'set x "${argv}"\n', 0],
+  ['unclosed braced varname in quotes',           'set x "${argv\n', 2],
+  ['plain $ inside quotes',                       'set x "$argv b"\n', 0],
+  ['quote spans lines then closes',               'set x "a\nb"\nset y {\n}\n', 0],
+  ['empty quoted word',                           'set x ""\n', 0],
+  ['adjacent quoted words',                       'set x "" ""\n', 0],
+  ['subst directly after close-quote is extra',   'set x "a"[list b]\n', 1],
+
+  // Backslash escapes in words.
+  ['escaped hash at command start',               'catch {\\#x}\n', 0],
+  ['escaped space joins words',                   'set x a\\ b\n', 0],
+  ['escaped semicolon is literal',                'set x a\\;b\n', 0],
+  ['escaped bracket open',                        'set x a\\[b\n', 0],
+  ['escaped bracket close',                       'set x a\\]b\n', 0],
+  ['continuation inside braced word',             'set x {a \\\n b}\n', 0],
+  ['continuation inside quoted word',             'set x "a \\\nb"\n', 0],
+  ['backslash at very end of document',           'set x a\\', 0],
+
+  // Command substitution.
+  ['mid-word command substitution',               'puts a[list x]b\n', 0],
+  ['nested substitution',                         'set x [list [list a] b]\n', 0],
+  ['quoted word inside subst then close',         'set x [list "a"]\n', 0],
+  ['semicolons inside subst',                     'set x [set y 1; list a]\n', 0],
+  ['stray ] at word start is literal',            'set x ]\n', 0],
+
+  // Variable substitution.
+  ['empty braced varname',                        'catch {set x ${}}\n', 0],
+  ['dollar dollar brace',                         'catch {set x $${argv}}\n', 0],
+  ['varname with braces inside',                  'set x ${a{b}\n', 0],
+  ['array parens are not special',                'set a(1) x\nset y $a(1)\n', 0],
+
+  // Brace words.
+  ['escaped braces inside braced word',           'set x {a\\{b}\n', 0],
+  ['escaped close inside braced word',            'set x {a\\}b}\n', 0],
+  ['deeply nested braces',                        'set x {a{b{c}d}e}\n', 0],
+  ['brace word ends at ; then comment',           'set x {a};# note {\nset y 1\n', 0],
+  ['quote directly inside braces',                'set x {"a"}\n', 0],
+
   // Negatives: real errors must still be reported.
   ['genuine unmatched }',                         'set x 1\n}\n', 1],
   ['genuine unmatched ]',                         'set x 1\n]\n', 1],
@@ -123,6 +228,34 @@ test('unclosed opener diagnostic points at the opener', () => {
 test('pathological input is capped, not unbounded', () => {
   const diags = scan('}\n'.repeat(200000));
   assert.equal(diags.length, MAX_DIAGNOSTICS);
+});
+
+test('single-line closer flood: first } is the command, rest are literal', () => {
+  // `}}}}...` is ONE command whose (invalid) name is '}' followed by
+  // literal word characters -- tclsh reports a single error, and so
+  // must the scanner (this is the case the pre-word-boundary scanner
+  // over-reported and the cap test above no longer exercises).
+  const diags = scan('}'.repeat(200000));
+  assert.equal(diags.length, 1);
+  assert.equal(diags[0].message, 'Unmatched closing brace');
+});
+
+test('extra-characters diagnostic points at the offending character', () => {
+  const [d] = scan('set x {a}}\n');
+  assert.equal(d.message, 'Extra characters after close-brace');
+  assert.deepEqual(d.range, { start: { line: 0, character: 9 }, end: { line: 0, character: 10 } });
+});
+
+test('missing close-brace for variable name points at the {', () => {
+  const [d] = scan('set x ${y\n');
+  assert.equal(d.message, 'Missing close-brace for variable name');
+  assert.deepEqual(d.range, { start: { line: 0, character: 7 }, end: { line: 0, character: 8 } });
+});
+
+test('unclosed double quote points at the opening quote', () => {
+  const [d] = scan('set x "abc\n');
+  assert.equal(d.message, 'Unclosed double quote');
+  assert.deepEqual(d.range, { start: { line: 0, character: 6 }, end: { line: 0, character: 7 } });
 });
 
 test('endsInLineContinuation: parity and CRLF', () => {
