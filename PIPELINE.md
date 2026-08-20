@@ -158,7 +158,8 @@ Worked against the real example of adding **`scan`** (the inverse of `format`):
 - **A command missing from the LSP data usually means a stale `commands.json`,**
   not a code bug — the command exists in `BuiltIns.cs` but the inventory used to
   build the JSON predates it. Regenerate.
-- **Line endings:** any tooling that rewrites `.eagle` / `.tcl` source must
-  preserve the file's original line endings (CRLF is the Eagle script-source
-  default) — rewriting CRLF as LF invalidates detached Harpy signatures. See the
-  docs repo's `tools/README.md` for the binary read/write pattern.
+- **Line endings:** any tooling that rewrites `.eagle` / `.tcl` / `.th8`
+  source must preserve the file's original line endings (CRLF is the Eagle
+  script-source default) — rewriting CRLF as LF invalidates detached Harpy
+  signatures. See the docs repo's `tools/README.md` for the binary read/write
+  pattern.

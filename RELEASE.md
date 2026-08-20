@@ -58,7 +58,7 @@ This script:
 On success you will see output like:
 
 ```
-VSIX created: eagle-scripting-language-1.0.3.vsix
+VSIX created: eagle-scripting-language-1.0.4.vsix
 ```
 
 ## Installing Locally
@@ -66,12 +66,12 @@ VSIX created: eagle-scripting-language-1.0.3.vsix
 Install the extension from the generated `.vsix` file:
 
 ```bash
-code --install-extension eagle-scripting-language-1.0.3.vsix
+code --install-extension eagle-scripting-language-1.0.4.vsix
 ```
 
-Then reload VS Code and open any `.eagle` or `.tcl` file to verify that
-syntax highlighting and LSP features (hover, completion, diagnostics) are
-working.
+Then reload VS Code and open any `.eagle`, `.tcl`, or `.th8` file to verify
+that syntax highlighting and LSP features (hover, completion, diagnostics)
+are working.
 
 ## Publishing to the Marketplace
 
@@ -130,7 +130,7 @@ The server files were not copied into the staging directory. Verify that
 Inspect the VSIX contents:
 
 ```bash
-unzip -l eagle-scripting-language-1.0.3.vsix | grep server
+unzip -l eagle-scripting-language-1.0.4.vsix | grep server
 ```
 
 You should see entries like `extension/server/server.js`. If they are missing,

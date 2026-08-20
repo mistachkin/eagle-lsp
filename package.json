@@ -1,6 +1,6 @@
 {
   "name": "eagle-scripting-language",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Syntax highlighting for the Eagle scripting language (Tcl for the CLR)",
   "main": "server.js",
   "bin": {
@@ -10,7 +10,12 @@
     "start": "node server.js --stdio",
     "test": "node --test"
   },
-  "keywords": ["eagle", "tcl", "lsp", "language-server"],
+  "keywords": [
+    "eagle",
+    "tcl",
+    "lsp",
+    "language-server"
+  ],
   "license": "MIT",
   "dependencies": {
     "vscode-languageserver": "^9.0.1",

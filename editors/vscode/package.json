@@ -2,7 +2,7 @@
   "name": "eagle-scripting-language",
   "displayName": "Eagle Scripting Language",
   "description": "Syntax highlighting for the Eagle scripting language (Tcl for the CLR)",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "MistachkinSystems",
   "repository": {
     "type": "git",
@@ -13,10 +13,13 @@
   "engines": {
     "vscode": "^1.75.0"
   },
-  "categories": ["Programming Languages"],
+  "categories": [
+    "Programming Languages"
+  ],
   "activationEvents": [
     "onLanguage:eagle",
     "onLanguage:tcl",
+    "onLanguage:th8",
     "onCommand:eagle.openShell"
   ],
   "main": "./extension.js",
@@ -24,8 +27,15 @@
     "languages": [
       {
         "id": "eagle",
-        "aliases": ["Eagle"],
-        "extensions": [".eagle", ".eeagle", ".ruleSet", ".th8"],
+        "aliases": [
+          "Eagle"
+        ],
+        "extensions": [
+          ".eagle",
+          ".eeagle",
+          ".ruleSet",
+          ".th8"
+        ],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./eagle-32.png",
@@ -34,8 +44,15 @@
       },
       {
         "id": "tcl",
-        "aliases": ["Tcl"],
-        "extensions": [".tcl", ".tk", ".itcl", ".itk"],
+        "aliases": [
+          "Tcl"
+        ],
+        "extensions": [
+          ".tcl",
+          ".tk",
+          ".itcl",
+          ".itk"
+        ],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./eagle-32.png",
@@ -71,7 +88,11 @@
         },
         "eagle.trace.server": {
           "type": "string",
-          "enum": ["off", "messages", "verbose"],
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
           "default": "off",
           "description": "Trace communication with the Eagle Language Server."
         },

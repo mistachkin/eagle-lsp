@@ -6,7 +6,7 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.4] - 2026-08-20
 
 ### Fixed
 
@@ -51,8 +51,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- TH8 support: the VS Code language client registers for the `th8`
+  language id (with a matching activation event), so Eagle LSP features
+  apply to TH8 documents when a TH8 language extension is present;
+  `.th8` files continue to open as Eagle directly.  The editor
+  configuration examples (Neovim, Helix) and the release/pipeline docs
+  now list the `th8` file type consistently.
 - Unit tests for the brace scanner (`npm test`, Node's built-in runner);
-  every expectation is cross-checked against real `tclsh` behaviour.
+  every script expectation is verified against the Eagle interpreter
+  (the target language), with tclsh as a secondary reference.
+- GitHub CI: cross-platform test matrix (Linux/macOS/Windows, Node
+  18/20/22) plus a VSIX packaging job that uploads the built extension
+  as an artifact.
 
 ## [1.0.3] - 2026-06-25
 

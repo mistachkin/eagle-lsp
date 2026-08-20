@@ -129,7 +129,7 @@ a:hover { text-decoration: underline; }
     <div class="code-block"><span class="comment"># Install from extension directory</span><br>cd editors/vscode && npm install<br><span class="comment"># Symlink into VS Code extensions</span><br>ln -s $(pwd) ~/.vscode/extensions/eagle-scripting-language</div>
   </div>
   <div class="install-content" id="tab-neovim">
-    <div class="code-block"><span class="comment">-- In your Neovim config (lua)</span><br>local configs = require('lspconfig.configs')<br>configs.eagle = {<br>&nbsp;&nbsp;default_config = {<br>&nbsp;&nbsp;&nbsp;&nbsp;cmd = { 'node', '/path/to/eagle-lsp/server.js', '--stdio' },<br>&nbsp;&nbsp;&nbsp;&nbsp;filetypes = { 'eagle', 'tcl' },<br>&nbsp;&nbsp;}<br>}<br>require('lspconfig').eagle.setup({})</div>
+    <div class="code-block"><span class="comment">-- In your Neovim config (lua)</span><br>local configs = require('lspconfig.configs')<br>configs.eagle = {<br>&nbsp;&nbsp;default_config = {<br>&nbsp;&nbsp;&nbsp;&nbsp;cmd = { 'node', '/path/to/eagle-lsp/server.js', '--stdio' },<br>&nbsp;&nbsp;&nbsp;&nbsp;filetypes = { 'eagle', 'tcl', 'th8' },<br>&nbsp;&nbsp;}<br>}<br>require('lspconfig').eagle.setup({})</div>
   </div>
   <div class="install-content" id="tab-emacs">
     <div class="code-block">(lsp-register-client<br>&nbsp;(make-lsp-client<br>&nbsp;&nbsp;:new-connection (lsp-stdio-connection<br>&nbsp;&nbsp;&nbsp;'("node" "/path/to/eagle-lsp/server.js" "--stdio"))<br>&nbsp;&nbsp;:major-modes '(tcl-mode)<br>&nbsp;&nbsp;:server-id 'eagle-ls))</div>

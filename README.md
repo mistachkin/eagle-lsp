@@ -53,7 +53,7 @@ npm install
 Or install the VSIX (if packaged):
 ```bash
 npx vsce package
-code --install-extension eagle-scripting-language-1.0.3.vsix
+code --install-extension eagle-scripting-language-1.0.4.vsix
 ```
 
 ### Neovim (via nvim-lspconfig)
@@ -66,7 +66,7 @@ if not configs.eagle then
   configs.eagle = {
     default_config = {
       cmd = { 'node', '/path/to/eagle-lsp/server.js', '--stdio' },
-      filetypes = { 'eagle', 'tcl' },
+      filetypes = { 'eagle', 'tcl', 'th8' },
       root_dir = lspconfig.util.find_git_ancestor,
       settings = {},
     },

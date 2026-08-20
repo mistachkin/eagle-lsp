@@ -102,7 +102,7 @@ connection.onInitialize((params) => {
       // Additional metadata
       serverInfo: {
         name: 'Eagle Language Server',
-        version: '1.0.3',
+        version: '1.0.4',
       },
     },
   };
