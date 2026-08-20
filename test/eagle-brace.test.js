@@ -105,6 +105,7 @@ const cases = [
   ['extra { after close-quote',                   'set x ""{\n', 1],
   ['one typo, one diagnostic (no cascade)',       'set x {a}bcdef{\n', 1],
   ['whitespace after close-brace is fine',        'set x {a} {b}\n', 0],
+  ['mid-line CR after close-brace is whitespace', 'set x {a}\rset y {b}\n', 0],
   ['; after close-brace is fine',                 'set x {a};puts hi\n', 0],
   ['] after close-brace closes substitution',     'puts [list {a}]\n', 0],
   ['continuation after close-brace separates',    'set x {a}\\\nb\n', 0],
@@ -120,7 +121,7 @@ const cases = [
   // through the closing quote.
   ['string continuation then extra { after quote','set x "a\\\n"{c\n', 1],
 
-  // --- Tcl quoting corner cases, all oracle-verified against tclsh ---
+  // --- Quoting corner cases, all oracle-verified against the Eagle shell ---
 
   // Eagle divergence: Eagle (Tcl 8.4 baseline) has NO {*} argument
   // expansion, so a word-initial {*} is a complete braced word and
@@ -221,7 +222,7 @@ test('diagnostic range points at the offending closer', () => {
 
 test('unclosed opener diagnostic points at the opener', () => {
   const [d] = scan('set x {\nset y 1\n');
-  assert.equal(d.message, 'Unclosed opening brace');
+  assert.equal(d.message, 'missing close-brace');
   assert.deepEqual(d.range, { start: { line: 0, character: 6 }, end: { line: 0, character: 7 } });
 });
 
@@ -237,24 +238,24 @@ test('single-line closer flood: first } is the command, rest are literal', () =>
   // over-reported and the cap test above no longer exercises).
   const diags = scan('}'.repeat(200000));
   assert.equal(diags.length, 1);
-  assert.equal(diags[0].message, 'Unmatched closing brace');
+  assert.equal(diags[0].message, 'invalid command name "}"');
 });
 
 test('extra-characters diagnostic points at the offending character', () => {
   const [d] = scan('set x {a}}\n');
-  assert.equal(d.message, 'Extra characters after close-brace');
+  assert.equal(d.message, 'extra characters after close-brace');
   assert.deepEqual(d.range, { start: { line: 0, character: 9 }, end: { line: 0, character: 10 } });
 });
 
 test('missing close-brace for variable name points at the {', () => {
   const [d] = scan('set x ${y\n');
-  assert.equal(d.message, 'Missing close-brace for variable name');
+  assert.equal(d.message, 'missing close-brace for variable name');
   assert.deepEqual(d.range, { start: { line: 0, character: 7 }, end: { line: 0, character: 8 } });
 });
 
 test('unclosed double quote points at the opening quote', () => {
   const [d] = scan('set x "abc\n');
-  assert.equal(d.message, 'Unclosed double quote');
+  assert.equal(d.message, 'missing "');
   assert.deepEqual(d.range, { start: { line: 0, character: 6 }, end: { line: 0, character: 7 } });
 });
 

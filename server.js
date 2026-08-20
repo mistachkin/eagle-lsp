@@ -1134,28 +1134,13 @@ connection.onReferences((params) => {
  * Handle the LSP `textDocument/foldingRange` request.
  *
  * Computes the set of foldable regions the editor offers via its
- * gutter-arrow / outline-collapse UI.  Two kinds of regions are
- * produced.
- *
- * Brace-delimited regions are detected by a single character scan that
- * tracks brace depth using a stack of opening line numbers.  A backslash
- * before any character makes the next character skipped, mirroring the
- * Eagle/Tcl escape rule and preventing `\{` or `\}` from being treated as
- * a real delimiter.  When a matching closer is found on a different line
- * than its opener, a `FoldingRangeKind.Region` from the opener's line to
- * the closer's line is added.  Same-line braces are not foldable.
- *
- * Comment regions are detected per line: whenever a line's first
- * non-whitespace character is `#`, the scan looks ahead for additional
- * consecutive `#`-starting lines and, if at least two are present, emits
- * a `FoldingRangeKind.Comment` covering the block.  The outer loop index
- * is then advanced past the block to avoid emitting overlapping ranges
- * for the same comment.
- *
- * The two passes happen interleaved inside the same per-line loop;
- * because the brace scan only acts on individual characters and the
- * comment scan only acts on whole lines, they do not interfere with each
- * other.
+ * gutter-arrow / outline-collapse UI.  The actual analysis lives in
+ * `parser.computeFoldingRanges`, which derives both kinds of region
+ * (multiline braced words and runs of comment lines) from the brace
+ * scanner's single lexical model -- so braces inside strings, comments,
+ * and escapes never fold, and a line whose `#` is word content is not a
+ * comment line.  This handler only maps the parser's plain 'region' /
+ * 'comment' kinds onto the protocol's `FoldingRangeKind` constants.
  *
  * @param {object} params - LSP `FoldingRangeParams` with the document
  *   identifier.
@@ -1166,42 +1151,11 @@ connection.onFoldingRanges((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
 
-  const text = doc.getText();
-  const lines = text.split('\n');
-  const ranges = [];
-  const braceStack = [];
-
-  for (let l = 0; l < lines.length; l++) {
-    const line = lines[l];
-    for (let c = 0; c < line.length; c++) {
-      if (line[c] === '\\') { c++; continue; }
-      if (line[c] === '{') {
-        braceStack.push(l);
-      } else if (line[c] === '}') {
-        if (braceStack.length > 0) {
-          const startLine = braceStack.pop();
-          if (l > startLine) {
-            ranges.push({
-              startLine,
-              endLine: l,
-              kind: FoldingRangeKind.Region,
-            });
-          }
-        }
-      }
-    }
-    // Comment blocks
-    if (line.trimStart().startsWith('#')) {
-      let endL = l;
-      while (endL + 1 < lines.length && lines[endL + 1].trimStart().startsWith('#')) endL++;
-      if (endL > l) {
-        ranges.push({ startLine: l, endLine: endL, kind: FoldingRangeKind.Comment });
-        l = endL; // skip ahead
-      }
-    }
-  }
-
-  return ranges;
+  return parser.computeFoldingRanges(doc.getText()).map((r) => ({
+    startLine: r.startLine,
+    endLine: r.endLine,
+    kind: r.kind === 'comment' ? FoldingRangeKind.Comment : FoldingRangeKind.Region,
+  }));
 });
 
 // --- Start ---

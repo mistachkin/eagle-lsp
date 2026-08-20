@@ -4,7 +4,8 @@
  */
 'use strict';
 
-const { endsInLineContinuation, scanDocument } = require('./eagle-brace');
+const { endsInLineContinuation, scanDocument, normalizeLineEndings } =
+  require('./eagle-brace');
 
 /**
  * Token types emitted by the scanner.
@@ -45,9 +46,10 @@ const TokenType = {
  *
  * Tricky details:
  *   - Comments are only recognized when the "#" is in command-leading
- *     position -- i.e., at the very start of the line or immediately after
- *     a NEWLINE or SEMICOLON token -- because in Eagle/Tcl "#" is only a
- *     comment introducer where a command is expected.
+ *     position -- at the very start of the line (unless continued), or
+ *     immediately after a NEWLINE, SEMICOLON, or BRACKET_OPEN token --
+ *     because in Eagle/Tcl "#" is only a comment introducer where a
+ *     command is expected.
  *   - Variable scanning handles three shapes: braced names "${name}",
  *     fully-qualified names beginning with "$::", and plain names possibly
  *     followed by an "$arr(index)" array element subscript; the subscript
@@ -63,12 +65,14 @@ const TokenType = {
  *   - "[" and "]" are emitted as their own BRACKET_OPEN / BRACKET_CLOSE
  *     tokens rather than being parsed as nested commands here; higher-
  *     level passes use them to reset command context.
- *   - A stray "}" becomes a single-character WORD token so it is visible to
- *     callers without breaking the scan.
- *   - The bare-word recognizer stops at any structural character and honours
- *     backslash escapes; a word starting with "-" and longer than one
- *     character is reclassified as an OPTION token so option-aware
- *     completion can use it.
+ *   - Braces and double quotes are special only at WORD START, exactly
+ *     as in eagle-brace.js: mid-word they are ordinary characters, so
+ *     "prefix{suffix", "a}b", and 'a"b' each tokenize as one WORD, and
+ *     a stray "}" at word start becomes a WORD token ("}" or "}x").
+ *   - The bare-word recognizer stops only at whitespace, ";", "[", and
+ *     "]", and honours backslash escapes; a word starting with "-" and
+ *     longer than one character is reclassified as an OPTION token so
+ *     option-aware completion can use it.
  *   - A safety fallback advances "i" if no recognizer consumed any input,
  *     guaranteeing forward progress on pathological characters.
  *
@@ -104,7 +108,11 @@ function tokenizeLine(line, opts) {
    * @returns {void} Mutates the enclosing scope's "i" in place.
    */
   function skipWhitespace() {
-    while (i < len && (line[i] === ' ' || line[i] === '\t')) i++;
+    // Matches Parser.cs's Space character class: tab, vertical tab,
+    // form feed, carriage return, and space (newlines never occur here
+    // because tokenizeLine operates on a single already-split line).
+    while (i < len && (line[i] === ' ' || line[i] === '\t' ||
+           line[i] === '\v' || line[i] === '\f' || line[i] === '\r')) i++;
   }
 
   while (i < len) {
@@ -175,17 +183,21 @@ function tokenizeLine(line, opts) {
       continue;
     }
 
-    // Braced string
+    // Braced string.  Escapes are consumed forward (`\{`, `\}`, and the
+    // pair `\\` never affect the depth), matching eagle-brace.js -- the
+    // old backward peek at `line[i-1]` misread `\\}` as an escaped brace.
     if (ch === '{') {
       const start = i;
       let depth = 1;
       i++;
       while (i < len && depth > 0) {
-        if (line[i] === '{' && line[i-1] !== '\\') depth++;
-        else if (line[i] === '}' && line[i-1] !== '\\') depth--;
-        if (depth > 0) i++;
+        const cch = line[i];
+        if (cch === '\\') { i += 2; continue; }
+        if (cch === '{') depth++;
+        else if (cch === '}') depth--;
+        i++;
       }
-      if (i < len) i++;
+      if (i > len) i = len; // trailing escape may overshoot the line
       tokens.push({ type: TokenType.BRACE_STRING, text: line.slice(start, i), start, end: i });
       continue;
     }
@@ -202,18 +214,19 @@ function tokenizeLine(line, opts) {
       continue;
     }
 
-    // Closing brace/bracket as standalone token (unmatched)
-    if (ch === '}') {
-      tokens.push({ type: TokenType.WORD, text: '}', start: i, end: i + 1 });
-      i++;
-      continue;
-    }
-
-    // Bare word (command name, option, etc.)
+    // Bare word (command name, option, etc.).  A stray `}` at word
+    // start falls in here too and yields a WORD token (`}` alone, or
+    // `}x` as one word), matching the scanner's literal treatment.  Only whitespace, `;`,
+    // and the substitution brackets `[` / `]` end a bare word: braces
+    // and double quotes are ORDINARY characters mid-word in Eagle/Tcl
+    // (`prefix{suffix`, `a}b`, `a"b` are each one word), exactly as the
+    // brace scanner treats them.  Braces/quotes group only at word
+    // start, which the recognizers above have already claimed.
     const start = i;
-    while (i < len && line[i] !== ' ' && line[i] !== '\t' && line[i] !== ';' &&
-           line[i] !== '\n' && line[i] !== '[' && line[i] !== ']' &&
-           line[i] !== '{' && line[i] !== '}' && line[i] !== '"') {
+    while (i < len && line[i] !== ' ' && line[i] !== '\t' &&
+           line[i] !== '\v' && line[i] !== '\f' && line[i] !== '\r' &&
+           line[i] !== ';' && line[i] !== '\n' &&
+           line[i] !== '[' && line[i] !== ']') {
       if (line[i] === '\\') i++; // skip escape
       i++;
     }
@@ -283,6 +296,7 @@ function tokenizeLine(line, opts) {
  *   empty document yields an empty array.
  */
 function parseDocument(text) {
+  text = normalizeLineEndings(text); // as the Engine does before parsing
   const lines = text.split('\n');
   const commands = [];
   let continuation = false;
@@ -678,6 +692,7 @@ function findProcedures(text) {
  *   match was found before the end (or beginning) of the document.
  */
 function findMatchingBrace(text, line, character) {
+  text = normalizeLineEndings(text); // as the Engine does before parsing
   const lines = text.split('\n');
   if (line >= lines.length) return null;
   const ch = lines[line][character];
@@ -794,8 +809,50 @@ function getDataWordLines(text, commands, lineStates) {
   return dataLines;
 }
 
+/**
+ * Compute the foldable regions of `text` for the LSP
+ * `textDocument/foldingRange` provider.
+ *
+ * Two kinds of region are produced, both derived from the brace
+ * scanner's single lexical model (`scanDocument`) rather than a private
+ * character scan, so quoting rules apply everywhere:
+ *
+ *   - Every braced word spanning more than one line becomes a 'region'
+ *     fold from its opening line to its closing line.  Braces inside
+ *     double-quoted strings, comments, or escapes never count.
+ *   - Every run of two or more consecutive comment lines becomes a
+ *     'comment' fold.  "Comment line" means the scanner recognized a
+ *     comment there (command position honoured): a line whose `#` is
+ *     actually word content (`puts \` then `#0`) or braced-word data is
+ *     NOT a comment line.  The trailing lines of a backslash-continued
+ *     comment are part of the run.
+ *
+ * @param {string} text - Full document text.
+ * @returns {Array<{startLine: number, endLine: number,
+ *   kind: string}>} Folding ranges with kind 'region' or 'comment';
+ *   the caller maps kinds onto its protocol constants.
+ */
+function computeFoldingRanges(text) {
+  const { lineStates, foldingRanges } = scanDocument(text, { Error: 1 });
+  const ranges = foldingRanges.slice();
+
+  for (let l = 0; l < lineStates.length; l++) {
+    if (lineStates[l].commentStart === null) continue;
+    let endL = l;
+    while (endL + 1 < lineStates.length &&
+           lineStates[endL + 1].commentStart !== null) {
+      endL++;
+    }
+    if (endL > l) {
+      ranges.push({ startLine: l, endLine: endL, kind: 'comment' });
+    }
+    l = endL; // skip past the run
+  }
+  return ranges;
+}
+
 module.exports = {
   TokenType, tokenizeLine, parseDocument, getWordAtPosition,
   getCommandContext, findVariables, findProcedures, findMatchingBrace,
-  getDataWordLines
+  getDataWordLines, computeFoldingRanges
 };

@@ -12,13 +12,38 @@
 const MAX_DIAGNOSTICS = 100;
 
 /**
+ * Normalize line endings to bare LF, exactly mirroring what the Eagle
+ * Engine does to script text before handing it to the parser
+ * (StringOps.FixupLineEndings, applied in the same order): first
+ * CRLF -> LF, then the "reversed" Acorn LFCR -> LF, then any remaining
+ * lone CR -> LF.  Editor documents are files, and files reach Eagle's
+ * parser only through this normalization -- so the LSP analyzes the
+ * text the parser will actually see (verified: a CR inside a braced
+ * word in a sourced FILE really does become LF in the value, while an
+ * in-memory [eval] keeps the raw CR).
+ *
+ * Fast path: text with no CR at all (the common case) is returned
+ * as-is without allocation.
+ *
+ * @param {string} text - Raw document text.
+ * @returns {string} The text with every line ending as a single LF.
+ */
+function normalizeLineEndings(text) {
+  if (text.indexOf('\r') === -1) return text;
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\n\r/g, '\n')
+    .replace(/\r/g, '\n');
+}
+
+/**
  * Does `line` end in an unescaped backslash, i.e. a Tcl line continuation?
  *
  * Escape parity matters: `set dir C:\\` ends in TWO backslashes -- the
  * second is escaped data, not a continuation -- while three trailing
- * backslashes (`\\\`) do continue the line.  A trailing `\r` (CRLF
- * documents, which editors on Windows commonly produce) is ignored so the
- * backslash is still recognised as the last meaningful character.
+ * backslashes (`\\\`) do continue the line.  A trailing `\r` is tolerated
+ * for callers passing raw (un-normalized) single lines, so the backslash
+ * is still recognised as the last meaningful character.
  *
  * Shared with `eagle-parser.js` so both diagnostic passes agree on what a
  * continuation is.
@@ -45,9 +70,18 @@ function endsInLineContinuation(line) {
  * a brace "counts":
  *
  *   - Backslash escapes: the character after a `\` is skipped, so `\{`,
- *     `\}`, `\[`, `\]`, and `\"` never affect the depth.  An unescaped
- *     `\` at end of line is a line continuation: the next line does NOT
- *     begin a new command.  Works for both LF and CRLF documents.
+ *     `\}`, `\[`, `\]`, and `\"` never affect the depth.  (Eagle's
+ *     multi-character escapes -- `\xNN`, `\uNNNN`, octal, and the
+ *     Eagle-specific `\B`/`\o`/`\d`/`\X` -- consume longer runs in the
+ *     real parser, but their digit runs can never contain a brace,
+ *     bracket, or quote, so skipping exactly one character is
+ *     balance-equivalent.)  An unescaped `\` at end of line is a line
+ *     continuation: the next line does NOT begin a new command.  Works
+ *     for both LF and CRLF documents because `scanDocument` first runs
+ *     `normalizeLineEndings` -- the same CR-elimination the Eagle
+ *     Engine performs (StringOps.FixupLineEndings) before its parser
+ *     ever sees script text, which is also why Parser.cs itself only
+ *     needs to recognize `\` + LF.
  *   - Braced words: inside `{...}` only braces themselves (and backslash
  *     escapes) are special.  `#`, `;`, `"`, `[`, and `]` are ordinary
  *     characters there -- `set re {]}`, `set x {a;# {}}`, and
@@ -63,8 +97,9 @@ function endsInLineContinuation(line) {
  *     whitespace, `;`, a closing `]`, the end of the line, or a line
  *     continuation to follow.  Anything else -- `set x {a}}`,
  *     `set x {a}{b`, `set x "a"{c`, `set x {a}[cmd]` -- is reported as
- *     "Extra characters after close-brace" / "close-quote", matching
- *     tclsh.  Conversely a stray `}` or `]` mid-word or at word start
+ *     "extra characters after close-brace" / "close-quote", using the
+ *     official parser's exact wording.  Conversely a stray `}` or `]`
+ *     mid-word or at word start
  *     (`puts a}b`, `puts }`) is legal literal data and is NOT reported;
  *     an unmatched closer is flagged only in command position.
  *   - Double-quoted strings (outside braces): braces are literal inside
@@ -73,7 +108,7 @@ function endsInLineContinuation(line) {
  *     suspended for the substitution and resumes after it, to any
  *     nesting depth.  A quote begins a string only at the start of a
  *     word (`puts a"b` is literal), and an unterminated string is
- *     reported at its opening quote ("missing quote" in tclsh).
+ *     reported at its opening quote with the official `missing "`.
  *   - NO `{*}` argument expansion: Eagle (Tcl 8.4 language baseline)
  *     does not support Tcl 8.5's expansion prefix, so `puts {*}$args`
  *     is an "extra characters after close-brace" error here -- exactly
@@ -100,19 +135,27 @@ function endsInLineContinuation(line) {
  * @param {string} text - Full document text.
  * @param {{Error: number}} DiagnosticSeverity - Severity enum to stamp on
  *   each diagnostic; passed in so this module has no import of its own.
- * @returns {{diagnostics: Array<object>, lineStates: Array<object>}}
+ * @returns {{diagnostics: Array<object>, lineStates: Array<object>,
+ *   foldingRanges: Array<object>}}
  *   "diagnostics" is the LSP diagnostic array (possibly empty).
  *   "lineStates" has one entry per line of `text`, describing the lexical
  *   context at the START of that line: "braceOpener" is the [line, col]
  *   of the innermost still-open `{` (null at brace depth zero),
- *   "inString" is true inside a multiline double-quoted word, and
- *   "inComment" is true on the trailing lines of a continued comment.
- *   Callers (e.g. the unknown-command pass) use this to tell which lines
- *   are the interior of a multiline word rather than fresh commands.
+ *   "inString" is true inside a multiline double-quoted word,
+ *   "inComment" is true on the trailing lines of a continued comment,
+ *   and "commentStart" is the column where a comment begins on the line
+ *   (0 on continued-comment lines, null when there is no comment).
+ *   "foldingRanges" lists every braced word spanning more than one line
+ *   as {startLine, endLine, kind: 'region'} -- computed with the full
+ *   quoting rules, so braces inside strings and comments never fold.
+ *   Callers (the unknown-command pass, the folding provider) use these
+ *   so every feature shares this one lexical model.
  */
 function scanDocument(text, DiagnosticSeverity) {
+  text = normalizeLineEndings(text); // as the Engine does before parsing
   const diagnostics = [];
   const lineStates = [];
+  const foldingRanges = []; // multiline braced words, quoting-aware
   const braceStack = [];   // [line, column] of each unmatched '{'
   const bracketStack = []; // [line, column] of each unmatched '['
   const lines = text.split('\n');
@@ -155,19 +198,20 @@ function scanDocument(text, DiagnosticSeverity) {
   // offending character, then drop to IN_WORD so one typo produces one
   // diagnostic instead of one per following character.
   const extraChars = (l, c) => {
-    report('Extra characters after close-' + lastClose, l, c);
+    report('extra characters after close-' + lastClose, l, c);
     wordPos = IN_WORD;
   };
 
   for (let l = 0; l < lines.length; l++) {
-    let line = lines[l];
-    if (line.length > 0 && line[line.length - 1] === '\r') {
-      line = line.slice(0, -1); // CRLF document: drop the carriage return
-    }
+    const line = lines[l]; // CR-free: normalizeLineEndings ran above
     lineStates.push({
       braceOpener: braceStack.length > 0 ? braceStack[braceStack.length - 1] : null,
       inString,
       inComment,
+      // Column where a comment begins on this line: 0 for the trailing
+      // lines of a backslash-continued comment, set below when a `#` in
+      // command position starts one, null when the line has no comment.
+      commentStart: inComment ? 0 : null,
     });
     if (inComment) {
       // A continued comment swallows this whole line too.
@@ -218,7 +262,10 @@ function scanDocument(text, DiagnosticSeverity) {
         if (ch === '{') {
           braceStack.push([l, c]);
         } else if (ch === '}') {
-          braceStack.pop();
+          const open = braceStack.pop();
+          if (l > open[0]) {
+            foldingRanges.push({ startLine: open[0], endLine: l, kind: 'region' });
+          }
           if (braceStack.length === 0) {
             // NOTE: unlike Tcl 8.5+, Eagle has NO `{*}` argument
             // expansion, so a word-initial `{*}` is a complete braced
@@ -253,6 +300,7 @@ function scanDocument(text, DiagnosticSeverity) {
       }
       if (ch === '#') {
         if (wordPos === COMMAND_START) {
+          lineStates[lineStates.length - 1].commentStart = c;
           if (endsInLineContinuation(line)) inComment = true;
           break; // comment: the rest of the line is ignored
         }
@@ -260,9 +308,14 @@ function scanDocument(text, DiagnosticSeverity) {
         else wordPos = IN_WORD; // ordinary word character
         continue;
       }
-      if (ch === ' ' || ch === '\t' || ch === '\f' || ch === '\v') {
+      if (ch === ' ' || ch === '\t' || ch === '\f' || ch === '\v' ||
+          ch === '\r') {
         // Whitespace ends the current word but does not leave command
-        // position.
+        // position.  The set matches Parser.cs GetCharacterType's Space
+        // class: tab, vertical tab, form feed, carriage return, space --
+        // a mid-line CR is a word separator, NOT extra characters
+        // (verified against the Eagle shell; line-end CRs are stripped
+        // above before this loop sees them).
         if (wordPos !== COMMAND_START) wordPos = WORD_START;
         continue;
       }
@@ -307,7 +360,7 @@ function scanDocument(text, DiagnosticSeverity) {
       if (ch === '}') {
         if (wordPos === COMMAND_START) {
           // A '}' cannot be a command name ("invalid command name").
-          report('Unmatched closing brace', l, c);
+          report('invalid command name "}"', l, c);
           wordPos = IN_WORD;
         } else if (wordPos === AFTER_CLOSE) {
           extraChars(l, c);
@@ -334,7 +387,7 @@ function scanDocument(text, DiagnosticSeverity) {
             wordPos = IN_WORD; // the enclosing word continues: `a[cmd]b`
           }
         } else if (wordPos === COMMAND_START) {
-          report('Unmatched closing bracket', l, c);
+          report('invalid command name "]"', l, c);
           wordPos = IN_WORD;
         } else if (wordPos === AFTER_CLOSE) {
           extraChars(l, c);
@@ -349,20 +402,20 @@ function scanDocument(text, DiagnosticSeverity) {
     }
   }
 
-  for (const [l, c] of braceStack) report('Unclosed opening brace', l, c);
+  for (const [l, c] of braceStack) report('missing close-brace', l, c);
   for (const [l, c, fromString, sStart] of bracketStack) {
-    report('Unclosed opening bracket', l, c);
+    report('missing close-bracket', l, c);
     if (fromString && sStart) {
-      report('Unclosed double quote', sStart[0], sStart[1]);
+      report('missing "', sStart[0], sStart[1]);
     }
   }
   if (inString && stringStart) {
-    report('Unclosed double quote', stringStart[0], stringStart[1]);
+    report('missing "', stringStart[0], stringStart[1]);
   }
   if (varNameStart !== null) {
-    report('Missing close-brace for variable name', varNameStart[0], varNameStart[1]);
+    report('missing close-brace for variable name', varNameStart[0], varNameStart[1]);
   }
-  return { diagnostics, lineStates };
+  return { diagnostics, lineStates, foldingRanges };
 }
 
 /**
@@ -379,5 +432,6 @@ function scanBraces(text, DiagnosticSeverity) {
 }
 
 module.exports = {
-  scanBraces, scanDocument, endsInLineContinuation, MAX_DIAGNOSTICS,
+  scanBraces, scanDocument, endsInLineContinuation, normalizeLineEndings,
+  MAX_DIAGNOSTICS,
 };

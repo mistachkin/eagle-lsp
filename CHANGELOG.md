@@ -18,6 +18,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inside them.  The classification is driven by the brace scanner's
   per-line lexical state (new `scanDocument` API), so both diagnostic
   passes share one source of truth — and one scan per validation.
+- Line endings are now normalized before any analysis, exactly mirroring
+  the Eagle Engine (`StringOps.FixupLineEndings`: CRLF, LFCR, and lone CR
+  all become LF) — so the LSP analyzes the text Eagle's parser will
+  actually see when the file is run, and lone-CR documents line up with
+  the editor's line numbering.
+- Diagnostic messages now use the official Eagle parser error strings:
+  `missing close-brace`, `missing close-bracket`, `missing "`,
+  `missing close-brace for variable name`, `extra characters after
+  close-brace` / `close-quote`, and `invalid command name "}"` / `"]"`
+  for stray closers in command position.
+- Mid-line whitespace now matches Parser.cs's Space character class
+  (tab, vertical tab, form feed, carriage return, space) in both the
+  scanner and the tokenizer.
+- Shared-tokenizer unification: the folding provider's private brace
+  tracker is gone — folding ranges now come from the brace scanner's
+  lexical model, so braces inside strings, comments, and escapes no
+  longer produce bogus folds, and only real comments (command position
+  honoured, continuations included) form comment folds.  The tokenizer's
+  word boundaries now match the scanner and Eagle: braces and quotes are
+  ordinary characters mid-word (`prefix{suffix`, `a}b`, `a"b` are one
+  word each), and braced-string extents use forward escape scanning
+  (`{a\\}` closes at the real brace).
 
 ## [1.0.4] - 2026-08-20
 

@@ -82,3 +82,100 @@ test('comment is recognized after an opening bracket', () => {
   const toks = parser.tokenizeLine('set y [# comment');
   assert.equal(toks[toks.length - 1].type, parser.TokenType.COMMENT);
 });
+
+// --- Tokenizer word boundaries (aligned with eagle-brace.js; each
+// --- literal-word claim verified against the Eagle shell) ---
+
+const lastTok = (line) => {
+  const toks = parser.tokenizeLine(line);
+  return toks[toks.length - 1];
+};
+
+test('mid-word open brace is part of the word', () => {
+  const t = lastTok('set x prefix{suffix');
+  assert.equal(t.type, parser.TokenType.WORD);
+  assert.equal(t.text, 'prefix{suffix');
+});
+
+test('mid-word close brace is part of the word', () => {
+  const t = lastTok('puts a}b');
+  assert.equal(t.type, parser.TokenType.WORD);
+  assert.equal(t.text, 'a}b');
+});
+
+test('mid-word quote is part of the word', () => {
+  const t = lastTok('puts a"b');
+  assert.equal(t.type, parser.TokenType.WORD);
+  assert.equal(t.text, 'a"b');
+});
+
+test('stray } at word start is a word; }x is one word', () => {
+  assert.equal(lastTok('set x }').text, '}');
+  assert.equal(lastTok('puts }x').text, '}x');
+});
+
+test('word-start braces and quotes still group', () => {
+  const toks = parser.tokenizeLine('proc p {a b} {body}');
+  assert.deepEqual(toks.map((t) => t.type), [
+    parser.TokenType.WORD, parser.TokenType.WORD,
+    parser.TokenType.BRACE_STRING, parser.TokenType.BRACE_STRING,
+  ]);
+});
+
+test('escaped braces do not affect brace-string depth', () => {
+  // {a\}b} closes at the final brace; {a\\} closes after the escaped
+  // backslash pair (the old backward peek misread this).
+  assert.equal(lastTok('set x {a\\}b}').text, '{a\\}b}');
+  assert.equal(lastTok('set x {a\\\\}').text, '{a\\\\}');
+});
+
+test('options are still recognized after the boundary change', () => {
+  const toks = parser.tokenizeLine('lsort -integer $l');
+  assert.equal(toks[1].type, parser.TokenType.OPTION);
+});
+
+test('mid-line CR is a word separator (Parser.cs Space class)', () => {
+  // Verified against the Eagle shell: a raw CR after a close-brace is
+  // legal inter-word whitespace, not "extra characters".
+  const toks = parser.tokenizeLine('set x\ry');
+  assert.deepEqual(toks.map((t) => t.text), ['set', 'x', 'y']);
+});
+
+// --- Folding ranges (single lexical model via scanDocument) ---
+
+const folds = (text) => parser.computeFoldingRanges(text);
+
+test('multiline braced word folds', () => {
+  assert.deepEqual(folds('proc p {} {\n  set x 1\n}\n'),
+    [{ startLine: 0, endLine: 2, kind: 'region' }]);
+});
+
+test('nested braced words fold individually', () => {
+  const r = folds('proc p {} {\n  if {1} {\n    puts hi\n  }\n}\n');
+  assert.deepEqual(r, [
+    { startLine: 1, endLine: 3, kind: 'region' },
+    { startLine: 0, endLine: 4, kind: 'region' },
+  ]);
+});
+
+test('braces inside strings and comments do not fold', () => {
+  assert.deepEqual(folds('# opening {\nset x 1\nset y "}"\n'), []);
+  assert.deepEqual(folds('set s "a {\nb"\nset t 1\n'), []);
+});
+
+test('comment runs fold; word-content # lines do not', () => {
+  assert.deepEqual(folds('# one\n# two\n# three\nset x 1\n'),
+    [{ startLine: 0, endLine: 2, kind: 'comment' }]);
+  // `#0` here is word content (continuation), not a comment line.
+  assert.deepEqual(folds('puts \\\n#0\n# real\n# run\n'),
+    [{ startLine: 2, endLine: 3, kind: 'comment' }]);
+});
+
+test('continued comment lines join the comment run', () => {
+  assert.deepEqual(folds('# a \\\n b\n# c\nset x 1\n'),
+    [{ startLine: 0, endLine: 2, kind: 'comment' }]);
+});
+
+test('single comment line does not fold', () => {
+  assert.deepEqual(folds('# alone\nset x 1\n'), []);
+});
