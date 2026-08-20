@@ -112,7 +112,7 @@ In `~/.config/helix/languages.toml`:
 [[language]]
 name = "eagle"
 scope = "source.eagle"
-file-types = ["eagle", "eg", "tcl"]
+file-types = ["eagle", "tcl", "th8"]
 language-servers = ["eagle-ls"]
 
 [language-server.eagle-ls]
@@ -131,16 +131,16 @@ server answers requests from an editor):
                        ==========                            =======
 
   EAGLE_COMMAND_REFERENCE.md   ┐
-  HTML command reference        ├─►  extract_docs.py  ─►  data/eagle_commands.json    ─┐
-  commands.json (structured)   ┘                                                       │
-                                                                                       │  load
-  core_script_library.md        ─►  data/extract.py   ─►  data/eagle_procedures.json  ─┤
-                                                                                       ▼
-                                                                                  eagle-data.js
-                                                                                       │
-                                                                                       │  query
-                                                                                       ▼
-   editor (VS Code / Neovim / ...)  ──── LSP over stdio ────►   server.js
+  HTML command reference       ├─►  extract_docs.py  ─►  data/eagle_commands.json    ─┐
+  commands.json (structured)   ┘                                                      │
+                                                                                      │  load
+  core_script_library.md       ─►  data/extract.py   ─►  data/eagle_procedures.json  ─┤
+                                                                                      ▼
+                                                                                 eagle-data.js
+                                                                                      │
+                                                                                      │  query
+                                                                                      ▼
+  editor (VS Code / Neovim / ...)  ──── LSP over stdio ────►   server.js
                                                                   │
                                                                   ├──► eagle-parser.js
                                                                   │     (per-document

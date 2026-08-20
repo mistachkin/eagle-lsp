@@ -99,11 +99,12 @@ function getDefaultBinaryDir() {
  *      deliberate simplification.
  *   3. Builds a clientOptions documentSelector that activates the client
  *      for three document kinds: file-scheme documents with language id
- *      "eagle" or "tcl", and untitled documents with language id "eagle".
- *      Registering for "tcl" lets Eagle features apply to plain Tcl files
- *      (Eagle is a superset of Tcl), while only "eagle" is recognized for
- *      brand new untitled buffers to avoid hijacking unsaved Tcl scratch
- *      buffers from other extensions.
+ *      "eagle", "tcl", or "th8", and untitled documents with language id
+ *      "eagle".  Registering for "tcl" and "th8" lets Eagle features
+ *      apply to plain Tcl or TH8 files (Eagle is a mostly a superset of
+ *      Tcl 8.4), while only "eagle" is recognized for brand new untitled
+ *      buffers to avoid hijacking unsaved Tcl scratch buffers from other
+ *      extensions.
  *   4. Constructs the LanguageClient with the identifier
  *      "eagleLanguageServer" and a human readable name, then calls
  *      client.start() to spin up the server and begin negotiating the LSP
@@ -153,6 +154,7 @@ function activate(context) {
     documentSelector: [
       { scheme: 'file', language: 'eagle' },
       { scheme: 'file', language: 'tcl' },
+      { scheme: 'file', language: 'th8' },
       { scheme: 'untitled', language: 'eagle' },
     ],
   };
