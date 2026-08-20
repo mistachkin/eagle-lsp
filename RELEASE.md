@@ -73,16 +73,26 @@ Then reload VS Code and open any `.eagle`, `.tcl`, or `.th8` file to verify
 that syntax highlighting and LSP features (hover, completion, diagnostics)
 are working.
 
-## Publishing to the Marketplace
+## Publishing
 
-### First-time Setup
+Every release is published to **both** extension registries, in either
+order, with the same VSIX:
+
+- the **Microsoft VS Code Marketplace** (VS Code itself), and
+- the **Open VSX Registry** (<https://open-vsx.org>) — used by VSCodium,
+  code-server, Gitpod, Eclipse Theia, and other non-Microsoft builds,
+  which cannot access the Microsoft marketplace.
+
+### VS Code Marketplace
+
+First-time setup:
 
 1. Create a publisher account at
    <https://marketplace.visualstudio.com/manage>.
 2. Generate a Personal Access Token (PAT) with the **Marketplace (Manage)**
    scope.
 
-### Publishing
+Publish:
 
 ```bash
 cd build
@@ -92,23 +102,62 @@ npx @vscode/vsce publish
 You will be prompted for your PAT. Alternatively, log in first:
 
 ```bash
-npx @vscode/vsce login eagle-community
+npx @vscode/vsce login MistachkinSystems
 npx @vscode/vsce publish
 ```
 
-### Updating the Version
+### Open VSX Registry
 
-Before publishing a new version, update the version in
-`editors/vscode/package.json` (the build script reads it from there), then
-re-run the packaging script:
+First-time setup:
+
+1. Log in at <https://open-vsx.org> (GitHub account) and sign the Eclipse
+   Foundation publisher agreement (Profile > Settings).
+2. Generate an access token (Profile > Settings > Access Tokens).
+3. Create the publisher namespace once:
+
+   ```bash
+   npx ovsx create-namespace MistachkinSystems -p <token>
+   ```
+
+Publish the same VSIX that went to the Marketplace:
 
 ```bash
-# Bump version (example: 1.0.1 -> 1.0.2)
-# Edit editors/vscode/package.json "version" field, then:
-bash scripts/package-vsix.sh
 cd build
-npx @vscode/vsce publish
+npx ovsx publish eagle-scripting-language-<version>.vsix -p <token>
 ```
+
+Open VSX requires a license; this extension's MIT `LICENSE` is copied into
+the package by the build script, so no extra steps are needed.
+
+### Release Checklist (Updating the Version)
+
+The version lives in more places than the extension manifest.  For a
+release `X.Y.Z`:
+
+1. **CHANGELOG.md** — retitle `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`
+   (start a fresh `[Unreleased]` section with the next change).
+2. **Package versions** — updates `package.json` and `package-lock.json`
+   in both places:
+
+   ```bash
+   npm version X.Y.Z --no-git-tag-version
+   (cd editors/vscode && npm version X.Y.Z --no-git-tag-version)
+   ```
+
+3. **`server.js`** — the `serverInfo.version` reported in the `initialize`
+   response.
+4. **Docs** — the literal `eagle-scripting-language-X.Y.Z.vsix` filenames
+   in this file and in `README.md`.
+5. **Verify** — `npm test`, then `bash scripts/package-vsix.sh`, then
+   confirm the artifact:
+
+   ```bash
+   unzip -p eagle-scripting-language-X.Y.Z.vsix extension/package.json | grep '"version"'
+   ```
+
+6. **Commit, tag, push** — CI re-runs the cross-platform test matrix and
+   builds the VSIX as an artifact on the push.
+7. **Publish to both registries** using the sections above.
 
 ## Troubleshooting
 
