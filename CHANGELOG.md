@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The brace scanner now tracks word *ends* as well as word starts:
+  characters directly after a closed braced or quoted word are reported
+  as "Extra characters after close-brace/close-quote" (e.g. `set x {a}}`,
+  `set x {a}{b`, `set x "a"}`), exactly as real Tcl rejects them — while
+  legal mid-word braces (`puts a}b`, `set x prefix{suffix`) stay
+  unflagged.
+- `${` now begins a braced variable name even mid-word (no nesting, no
+  escapes), so an unterminated `set x ${y` is reported as "Missing
+  close-brace for variable name" and `pre${y}post` is accepted.
+- A line continuation inside a double-quoted string no longer leaks
+  word-start state through the closing quote.
+- The scanner's word-position flags were consolidated into a single
+  four-state variable (command start / word start / in word / after
+  close), making the state invariants explicit.
 - False "Unmatched closing brace" diagnostics: `#` now starts a comment only
   in command position — `uplevel #0 { ... }`, `set c #ff0000`, and similar
   words are no longer swallowed as comments (#1).

@@ -86,6 +86,37 @@ const cases = [
   ['braces inside double quotes',                 'set s "a { b"\nset t "}"\n', 0],
   ['escaped braces',                              'set s \\{\nset t \\}\n', 0],
 
+  // Word ends: after a closed braced/quoted word, Tcl allows only
+  // whitespace, ';', a closing ']', end of line, or a continuation.
+  // Everything else is "extra characters after close-brace/close-quote".
+  ['extra } after close-brace',                   'set x {a}}\n', 1],
+  ['extra } after proc body',                     'proc p {} {\n  puts hi\n}}\n', 1],
+  ['extra { after close-brace',                   'set x {a}{b\n', 1],
+  ['extra ] after close-brace',                   'set x {a}]\n', 1],
+  ['extra [ after close-brace',                   'set x {a}[list]\n', 1],
+  ['extra quote after close-brace',               'set x {a}"b"\n', 1],
+  ['extra escape after close-brace',              'set x {a}\\b\n', 1],
+  ['extra word char after close-brace',           'set x {a}b\n', 1],
+  ['extra # after close-brace',                   'set x {a}#c\n', 1],
+  ['extra } after close-quote',                   'set x "a"}\n', 1],
+  ['extra { after close-quote',                   'set x ""{\n', 1],
+  ['one typo, one diagnostic (no cascade)',       'set x {a}bcdef{\n', 1],
+  ['whitespace after close-brace is fine',        'set x {a} {b}\n', 0],
+  ['; after close-brace is fine',                 'set x {a};puts hi\n', 0],
+  ['] after close-brace closes substitution',     'puts [list {a}]\n', 0],
+  ['continuation after close-brace separates',    'set x {a}\\\nb\n', 0],
+  ['EOL after close-brace is fine',               'set x {a}\nset y {b}\n', 0],
+
+  // Braced variable names: ${ is special even mid-word, no nesting.
+  ['unclosed braced variable name',               'set x ${y\n', 1],
+  ['braced variable name then text',              'set x ${y}tail\n', 0],
+  ['braced variable name mid-word',               'puts pre${y}post\n', 0],
+  ['escaped $ does not open variable name',       'puts \\${y\nset z {\n}\n', 0],
+
+  // Continuation inside a quoted string must not leak word state
+  // through the closing quote.
+  ['string continuation then extra { after quote','set x "a\\\n"{c\n', 1],
+
   // Negatives: real errors must still be reported.
   ['genuine unmatched }',                         'set x 1\n}\n', 1],
   ['genuine unmatched ]',                         'set x 1\n]\n', 1],
@@ -123,6 +154,28 @@ test('unclosed opener diagnostic points at the opener', () => {
 test('pathological input is capped, not unbounded', () => {
   const diags = scan('}\n'.repeat(200000));
   assert.equal(diags.length, MAX_DIAGNOSTICS);
+});
+
+test('single-line closer flood: first } is the command, rest are literal', () => {
+  // `}}}}...` is ONE command whose (invalid) name is '}' followed by
+  // literal word characters -- tclsh reports a single error, and so
+  // must the scanner (this is the case the pre-word-boundary scanner
+  // over-reported and the cap test above no longer exercises).
+  const diags = scan('}'.repeat(200000));
+  assert.equal(diags.length, 1);
+  assert.equal(diags[0].message, 'Unmatched closing brace');
+});
+
+test('extra-characters diagnostic points at the offending character', () => {
+  const [d] = scan('set x {a}}\n');
+  assert.equal(d.message, 'Extra characters after close-brace');
+  assert.deepEqual(d.range, { start: { line: 0, character: 9 }, end: { line: 0, character: 10 } });
+});
+
+test('missing close-brace for variable name points at the {', () => {
+  const [d] = scan('set x ${y\n');
+  assert.equal(d.message, 'Missing close-brace for variable name');
+  assert.deepEqual(d.range, { start: { line: 0, character: 7 }, end: { line: 0, character: 8 } });
 });
 
 test('endsInLineContinuation: parity and CRLF', () => {

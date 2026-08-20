@@ -55,9 +55,21 @@ function endsInLineContinuation(line) {
  *     inside a braced word still count, exactly as in Tcl's own
  *     brace-matching rule.  An opening brace starts this grouping only at
  *     the beginning of a word; braces in `prefix{suffix` and
- *     `prefix}suffix` are literal data.
+ *     `prefix}suffix` are literal data.  The exception is `${`: a brace
+ *     after a dollar sign begins a braced VARIABLE NAME even mid-word,
+ *     running (with no nesting and no escapes) to the first `}` --
+ *     `set x ${y` is Tcl's "missing close-brace for variable name".
+ *   - Word ends: once a braced or quoted word closes, Tcl allows only
+ *     whitespace, `;`, a closing `]`, the end of the line, or a line
+ *     continuation to follow.  Anything else -- `set x {a}}`,
+ *     `set x {a}{b`, `set x "a"{c`, `set x {a}[cmd]` -- is reported as
+ *     "Extra characters after close-brace" / "close-quote", matching
+ *     tclsh.  Conversely a stray `}` or `]` mid-word or at word start
+ *     (`puts a}b`, `puts }`) is legal literal data and is NOT reported;
+ *     an unmatched closer is flagged only in command position.
  *   - Double-quoted strings (outside braces): brace/bracket counting is
- *     disabled inside them.
+ *     disabled inside them.  A quote begins a string only at the start
+ *     of a word; `puts a"b` is literal.
  *   - Comments: a `#` starts a comment ONLY in command position -- the
  *     start of a line (unless the previous line continued), or the first
  *     non-whitespace after a `;` or an opening `[` -- and only at brace
@@ -87,13 +99,26 @@ function scanBraces(text, DiagnosticSeverity) {
   const bracketStack = []; // [line, column] of each unmatched '['
   const lines = text.split('\n');
   let inString = false;
-  // True while the scanner is at the start of a command -- the only place
-  // Tcl recognises a `#` comment.  Only meaningful at brace depth zero.
-  let atCommandStart = true;
-  // Braces and double quotes begin grouping only as the first character of
-  // a word.  Whitespace and backslash-newline begin a new word without
-  // beginning a new command, so this state is distinct from atCommandStart.
-  let atWordStart = true;
+
+  // Word-position state, a single strictly-ordered variable rather than
+  // cooperating booleans.  The invariants live in one place:
+  //
+  //   COMMAND_START  start of a command: the only place `#` starts a
+  //                  comment, and the only place a stray `}` / `]` is an
+  //                  error ("invalid command name").
+  //   WORD_START     between words of a command: `{` and `"` begin
+  //                  grouping here (and at COMMAND_START), stray closers
+  //                  are literal.
+  //   IN_WORD        inside a bare word: `{`, `}`, `]`, and `"` are all
+  //                  literal; `[` and `${` still substitute.
+  //   AFTER_CLOSE    a braced or quoted word just closed: only
+  //                  whitespace, `;`, a closing `]`, end of line, or a
+  //                  continuation may follow ("extra characters after
+  //                  close-brace/close-quote" otherwise).
+  const COMMAND_START = 0, WORD_START = 1, IN_WORD = 2, AFTER_CLOSE = 3;
+  let wordPos = COMMAND_START;
+  let lastClose = 'brace'; // which kind of word closed ('brace'/'quote')
+  let varNameStart = null; // [line, col] of the '{' in an open '${'
   let continued = false;   // previous code line ended in a continuation
   let inComment = false;   // previous comment line ended in a continuation
 
@@ -107,6 +132,14 @@ function scanBraces(text, DiagnosticSeverity) {
     });
   };
 
+  // Report "extra characters after close-brace/quote" once at the first
+  // offending character, then drop to IN_WORD so one typo produces one
+  // diagnostic instead of one per following character.
+  const extraChars = (l, c) => {
+    report('Extra characters after close-' + lastClose, l, c);
+    wordPos = IN_WORD;
+  };
+
   for (let l = 0; l < lines.length; l++) {
     let line = lines[l];
     if (line.length > 0 && line[line.length - 1] === '\r') {
@@ -118,94 +151,147 @@ function scanBraces(text, DiagnosticSeverity) {
       continue;
     }
     // A physical newline starts a new command only at the active script
-    // level.  Newlines inside braced or quoted words belong to the outer
-    // command, which resumes after the closing delimiter.
-    if (!continued && braceStack.length === 0 && !inString) {
-      atCommandStart = true;
-      atWordStart = true;
+    // level.  Newlines inside braced words, quoted words, or braced
+    // variable names belong to the outer command, which resumes after
+    // the closing delimiter.
+    if (!continued && braceStack.length === 0 && !inString &&
+        varNameStart === null) {
+      wordPos = COMMAND_START;
     }
     continued = false;
     for (let c = 0; c < line.length; c++) {
       const ch = line[c];
+      if (varNameStart !== null) {
+        // Braced variable name: everything (no nesting, no escapes) up
+        // to the first '}' -- Tcl's rule for `${name}`.
+        if (ch === '}') { varNameStart = null; wordPos = IN_WORD; }
+        continue;
+      }
       if (ch === '\\') {
         if (c === line.length - 1) {
           continued = true;
-          if (braceStack.length === 0) atWordStart = true;
+          // Backslash-newline acts as a word separator; inside a string
+          // or braced word it is ordinary content and must not disturb
+          // the word state (a quoted word can span lines).
+          if (!inString && braceStack.length === 0) wordPos = WORD_START;
         } else {
           c++;
-          if (braceStack.length === 0) {
-            atCommandStart = false;
-            atWordStart = false;
+          if (!inString && braceStack.length === 0) {
+            if (wordPos === AFTER_CLOSE) extraChars(l, c - 1);
+            else wordPos = IN_WORD;
           }
         }
         continue;
       }
       if (braceStack.length > 0) {
         // Inside a braced word only braces themselves are special.
-        if (ch === '{') braceStack.push([l, c]);
-        else if (ch === '}') braceStack.pop();
+        if (ch === '{') {
+          braceStack.push([l, c]);
+        } else if (ch === '}') {
+          braceStack.pop();
+          if (braceStack.length === 0) { wordPos = AFTER_CLOSE; lastClose = 'brace'; }
+        }
         continue;
       }
       if (inString) {
-        if (ch === '"') inString = false;
-        continue;
-      }
-      if (ch === '"' && atWordStart) {
-        inString = true;
-        atCommandStart = false;
-        atWordStart = false;
+        if (ch === '"') { inString = false; wordPos = AFTER_CLOSE; lastClose = 'quote'; }
         continue;
       }
       if (ch === '#') {
-        if (atCommandStart) {
+        if (wordPos === COMMAND_START) {
           if (endsInLineContinuation(line)) inComment = true;
           break; // comment: the rest of the line is ignored
         }
-        atCommandStart = false; // ordinary word character
-        atWordStart = false;
+        if (wordPos === AFTER_CLOSE) extraChars(l, c);
+        else wordPos = IN_WORD; // ordinary word character
         continue;
       }
       if (ch === ' ' || ch === '\t' || ch === '\f' || ch === '\v') {
-        atWordStart = true;
-        continue; // whitespace does not leave command position
-      }
-      if (ch === ';') {
-        atCommandStart = true;
-        atWordStart = true;
+        // Whitespace ends the current word but does not leave command
+        // position.
+        if (wordPos !== COMMAND_START) wordPos = WORD_START;
         continue;
       }
-      if (ch === '{' && atWordStart) {
-        braceStack.push([l, c]);
-        atCommandStart = false;
-        atWordStart = false;
+      if (ch === ';') {
+        wordPos = COMMAND_START;
+        continue;
+      }
+      if (ch === '$') {
+        if (wordPos === AFTER_CLOSE) extraChars(l, c);
+        else wordPos = IN_WORD;
+        if (c + 1 < line.length && line[c + 1] === '{') {
+          varNameStart = [l, c + 1];
+          c++; // consume the '{' so the variable-name branch owns it
+        }
+        continue;
+      }
+      if (ch === '"') {
+        if (wordPos === COMMAND_START || wordPos === WORD_START) {
+          inString = true;
+          wordPos = IN_WORD;
+        } else if (wordPos === AFTER_CLOSE) {
+          extraChars(l, c);
+          inString = true; // recover by scanning the quoted text anyway
+        } else {
+          wordPos = IN_WORD; // mid-word quote is literal
+        }
+        continue;
+      }
+      if (ch === '{') {
+        if (wordPos === COMMAND_START || wordPos === WORD_START) {
+          braceStack.push([l, c]);
+          wordPos = IN_WORD;
+        } else if (wordPos === AFTER_CLOSE) {
+          extraChars(l, c);
+        } else {
+          wordPos = IN_WORD; // mid-word brace is literal
+        }
         continue;
       }
       if (ch === '}') {
-        if (atCommandStart) report('Unmatched closing brace', l, c);
-        atCommandStart = false;
-        atWordStart = false;
+        if (wordPos === COMMAND_START) {
+          // A '}' cannot be a command name ("invalid command name").
+          report('Unmatched closing brace', l, c);
+          wordPos = IN_WORD;
+        } else if (wordPos === AFTER_CLOSE) {
+          extraChars(l, c);
+        } else {
+          wordPos = IN_WORD; // stray '}' in or at the start of a word is literal
+        }
         continue;
       }
       if (ch === '[') {
+        // Command substitution starts anywhere in a word...
+        if (wordPos === AFTER_CLOSE) extraChars(l, c);
         bracketStack.push([l, c]);
-        atCommandStart = true; // a new command begins inside [ ]
-        atWordStart = true;
+        wordPos = COMMAND_START; // ...and a new command begins inside it
         continue;
       }
       if (ch === ']') {
-        if (bracketStack.length > 0) bracketStack.pop();
-        else if (atCommandStart) report('Unmatched closing bracket', l, c);
-        atCommandStart = false;
-        atWordStart = false;
+        if (bracketStack.length > 0) {
+          bracketStack.pop();
+          wordPos = IN_WORD; // the enclosing word continues: `a[cmd]b`
+        } else if (wordPos === COMMAND_START) {
+          report('Unmatched closing bracket', l, c);
+          wordPos = IN_WORD;
+        } else if (wordPos === AFTER_CLOSE) {
+          extraChars(l, c);
+        } else {
+          wordPos = IN_WORD; // stray ']' in a word is literal
+        }
         continue;
       }
-      atCommandStart = false; // every remaining case is inside a word
-      atWordStart = false;
+      // Every remaining character is ordinary word content.
+      if (wordPos === AFTER_CLOSE) extraChars(l, c);
+      else wordPos = IN_WORD;
     }
   }
 
   for (const [l, c] of braceStack) report('Unclosed opening brace', l, c);
   for (const [l, c] of bracketStack) report('Unclosed opening bracket', l, c);
+  if (varNameStart !== null) {
+    report('Missing close-brace for variable name', varNameStart[0], varNameStart[1]);
+  }
   return diagnostics;
 }
 
