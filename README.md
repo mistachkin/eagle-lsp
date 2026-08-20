@@ -205,9 +205,9 @@ eagle-lsp/
 ├── server.js                   # Main LSP server (Node.js)
 ├── eagle-data.js               # Documentation data loader
 ├── eagle-parser.js             # Eagle/Tcl tokenizer and parser
-├── eagle-brace.js               # Brace/bracket balance scanner (diagnostics pass one)
+├── eagle-brace.js              # Brace/bracket balance scanner (diagnostics pass one)
 ├── test/
-│   └── eagle-brace.test.js      # Scanner unit tests (node --test)
+│   └── eagle-brace.test.js     # Scanner unit tests (node --test)
 ├── data/
 │   ├── eagle_commands.json     # 120+ built-in commands with full docs
 │   ├── eagle_procedures.json   # 135+ library procedures
